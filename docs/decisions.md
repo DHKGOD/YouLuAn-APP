@@ -1,0 +1,115 @@
+# 技術決策紀錄
+
+每項決策：日期、決定、理由、替代方案。新的決策加在最下面。
+
+## 2026-10-20 環境
+
+| # | 決定 | 理由 | 替代方案（未採用原因） |
+|---|---|---|---|
+| D1 | **不用 Docker**；PostgreSQL 用 EnterpriseDB 官方免安裝版 zip ＋ OSGeo 官方 PostGIS bundle | 不需系統管理員、不建 Windows 服務；資料目錄可放專案內（`db/pgdata`），符合「模擬雲端」 | Docker Desktop 需管理員、WSL2，且資料目錄在 volume 中不直觀 |
+| D2 | PostgreSQL 程式裝在 `%LOCALAPPDATA%\Programs\pgsql18`，**資料目錄仍在專案內** | Windows 版 initdb 會把 share 目錄路徑寫進 SQL，專案路徑含中文（桌面、資料庫專題）會失敗（invalid byte sequence 0xae） | 把專案搬到英文路徑（要動使用者資料夾）、8.3 短路徑（E: 未啟用） |
+| D3 | Android SDK 放在 `%USERPROFILE%\Android\Sdk` | Claude 桌面版是 MSIX 封裝，寫進 AppData 的檔案會被虛擬化到私有目錄，其他程式看不到 | `%LOCALAPPDATA%\Android\Sdk`（被虛擬化） |
+| D4 | JDK 21（Microsoft Build of OpenJDK） | Capacitor 8 / AGP 需要 JDK 21 | 既有 JDK 17/23 版本不符 |
+| D5 | Python 用 uv 管理（`pyproject.toml` + `uv.lock`） | 快、可重現、雲端主機只要裝 uv | pip + venv |
+| D6 | 本機有防毒軟體攔截 TLS：Python 用 `truststore`、uv 用 `UV_SYSTEM_CERTS=1`、Gradle 用 `-Djavax.net.ssl.trustStoreType=Windows-ROOT` | 使用 Windows 憑證庫即可，不必關防毒 | 關閉 TLS 驗證（不安全） |
+
+## 2026-10-20 MCP / 外掛
+
+| # | 決定 | 理由 |
+|---|---|---|
+| M1 | Context7（Upstash 官方）讀最新文件 | FastAPI、Capacitor、Leaflet、MapLibre 版本更新快 |
+| M2 | Playwright MCP（Microsoft 官方）測網頁 | 可在標準 Chromium 驗證 WebGL 地圖（Claude 內建瀏覽器沒有 WebGL） |
+| M3 | **自寫唯讀 Postgres MCP**（`tools_mcp/pg_readonly_mcp.py`，官方 MCP Python SDK） | 第三方 `postgres-mcp` 與 mcp 2.x、pglast 版本不相容，試了 3 種方法都裝不起來；自寫只有 60 行、可控，且用 `mcp_readonly` 帳號＋ READ ONLY 交易雙重保護 |
+| M4 | GitHub 不裝 MCP，用已登入的 `gh` CLI | gh 已可建 repo、PR、issue；官方 GitHub MCP 需要另外的 PAT |
+| M5 | OpenAI 官方 `codex-plugin-cc` + Codex CLI | 使用者要求 Claude／Codex 接力與交叉審查 |
+
+## 2026-10-20 資料與資料庫
+
+| # | 決定 | 理由 |
+|---|---|---|
+| B1 | 資料：115 年 1–10 月 A2（即時資料集 13139） | 284,116 件事故／640,620 列，遠超 20 萬；1–8 月筆數與先前實測完全一致 |
+| B2 | 不匯入 110 年 A1 歷史檔 | 該檔只有 6 欄，格式與 A2 不同；下載腳本保留 `--with-a1` 選項 |
+| B3 | 事故切分規則：「當事者順位=1」開新事故 | 原始資料沒有事故編號；用(日期,時間,地點,座標)當鍵會有 31 件碰撞 |
+| B4 | `party` 不設 (accident_id, party_order) UNIQUE | 原始資料有 1 件事故順位為 1,2,4,4，保留原貌 |
+| B5 | 無效座標（台灣範圍外，如緯度 9）保留原值、`coord_valid=false` | 不丟資料，空間查詢只用有效座標（283,785 件） |
+| B6 | 危險路口＝路口事故以 0.0004°（約 40 m）格網彙整、至少 3 件 | 一般 SQL 即可、可解釋；已知限制：路口剛好跨格線時會被拆成兩格（TASKS 有改進項） |
+| B7 | PostGIS 欄位用「產生欄位」(GENERATED ... STORED) | lon/lat 改變自動更新；沒有 PostGIS 的主機直接略過 002 migration |
+| B8 | Migration 用自寫的簡單 runner（`scripts/migrate.py` + 編號 SQL 檔） | 透明、無額外套件、任何 PostgreSQL 都能跑 |
+| B9 | 資料庫只聽 localhost；手機連 API 不連 DB | 安全；上雲端時也建議 DB 不對外 |
+
+## 2026-10-20 前端與 App
+
+| # | 決定 | 理由 |
+|---|---|---|
+| F1 | Vite + 原生 JS（不用 React） | 畫面數量不多；套件少、打包小、Codex 也容易接手 |
+| F2 | iOS 設計語言：毛玻璃導覽列／分頁列、大標題、圓角分組清單、分段控制、底部抽屜、深色模式 | 使用者要求「像 Apple App 一樣好看」 |
+| F3 | 底圖：**MapLibre GL 向量地圖 + OpenFreeMap**（Liberty／Dark 樣式），透過 maplibre-gl-leaflet 與 Leaflet 標記共存 | 免金鑰、免費、開源；風格接近 Google 地圖。CARTO 已需 API key；Google Maps 官方 API 需綁信用卡（付費服務，需使用者決定）；直接抓 Google 圖磚違反條款 |
+| F4 | 地名顯示 `name:zh-Hant` → `name` | 台灣的 `name` 本身是繁體，`name:zh` 常是簡體 |
+| F5 | Capacitor `androidScheme: http` ＋ network_security_config 允許明文 | 本機階段手機用 http 連區網 IP（IP 會變，無法逐一列出）；上雲端改 HTTPS 後可關閉 |
+| F6 | 伺服器位址存在 App 的 localStorage，設定頁可改、輸入會自動把全形符號轉半形 | 換雲端不必重新打包；中文輸入法常打出全形「：」 |
+| F7 | 即時回報用 `since_id` 每 5 秒輪詢（不用 WebSocket） | 簡單、穿過任何代理／雲端主機都能用 |
+
+## 2026-10-20 產品方向（使用者提議）
+
+| # | 決定 | 理由 |
+|---|---|---|
+| P1 | 規劃「背景守護模式」：Geofencing ＋ 活動辨識 ＋ heads-up 通知 ＋ 語音（自寫 Capacitor Android 外掛） | 使用者實際用 Google Maps 導航或在通勤時滑手機，不會一直開著本 App；背景提醒才是最大價值 |
+| P2 | 自訂起訖點路線（地名搜尋 Nominatim、路線 OSRM，由後端代查） | 使用者要能查「台北到苗栗」等任意路線 |
+
+## 2026-10-20 AI 與資料品質
+
+| # | 決定 | 理由 |
+|---|---|---|
+| A1 | AI 分兩個模型：A 對照（含事故型態）、B 情境預測（只用事故前已知特徵，App 使用） | 事故型態是事後資訊，不能用來事前提醒；A 用來證明和先前實測（0.544）一致 |
+| A2 | B 排除「其他不當駕車行為」「尚未發現肇事因素」兩個模糊類別 | 對使用者沒有提醒價值 |
+| A3 | 時間切分 1–6 訓練／7–8 驗證（選模型）／9–10 測試 | 避免用未來資料；測試集只評估一次 |
+| A4 | 演算法比較 LogisticRegression 與 HistGradientBoosting，依驗證 macro-F1 選 | 類別不平衡，macro-F1 比 accuracy 公平；兩者都 class_weight=balanced |
+| A5 | 每次預測寫入 prediction（含 model_version_id、輸入情境與輸出） | 課程要求可回查模型版本；API `/api/ai/predictions/{id}` |
+| Q1 | 座標品質：50 m 格內 ≥4 個行政區 → 共用預設座標；離行政區中位數 >10 km → 座標與地址不符 | 實測新北市約 4,500 件事故落在板橋同一點，曾讓排行第 1 名出現 489 件的假路口 |
+| U1 | App 內（Android WebView）關閉 backdrop-filter 改實色 | 實機截圖證實該 WebView 的毛玻璃會把底下內容半透明重疊畫出 |
+| T1 | 端對端測試用 Playwright（手機尺寸＋平板橫式），實機用 CDP 巡檢腳本 | 使用者要求「反覆測試、不能有 bug」；曾有只在電腦看畫面而漏掉的 bug |
+## 2026-10-20 背景守護模式
+
+| # | 決定 | 理由 |
+|---|---|---|
+| G1 | 前景服務＋定位更新，不用 Geofencing | Geofencing 觸發延遲可達數分鐘，路口提醒來不及；前景服務在 App 前景時啟動即可在背景持續定位，不需要「一律允許」背景定位權限 |
+| G2 | 離危險路口 600 m 外用省電定位、接近才高精度 | 省電 |
+| G3 | 依速度自動判斷步行／騎車／開車（60／120／220 m），可手動選「搭大眾運輸」靜音 | 乘客不需要提醒；速度無法區分駕駛與乘客，所以給手動選項 |
+| G4 | 只在接近時提醒、同路口 10 分鐘冷卻 | 避免噪音 |
+| G5 | 靈動島懸浮視窗（SYSTEM_ALERT_WINDOW）為主要畫面提醒 | 實測三星「簡要」彈出樣式會停用一般 App 的橫幅；懸浮視窗不受影響，也實現使用者提議的「懸浮視窗／靈動島」 |
+| G6 | 服務自行向伺服器下載附近 3 km 危險路口並快取 | App 被關掉、WebView 暫停時仍可運作；離線可用快取 |
+| G7 | 展示模式：服務沿路線模擬移動 | 平板沒有 GPS 也能展示；可切到其他 App 觀看提醒 |
+
+| B10 | 危險路口：格網後以事故最多的格子為中心，合併中心點 35 m 內的相鄰格子（不連鎖合併） | 同一路口常被格線切成兩格（Demo 路線的「中正路／中環路1段」原本拆成 17＋4 件）；不連鎖是為了避免整條路被併成一點 |
+
+## 天候自動模式（2026-10-20）
+
+| # | 決策 | 理由 |
+|---|---|---|
+| W1 | 由後端代查氣象署，授權碼只放伺服器 `.env` | App 是側載 APK，授權碼放進 App 等於公開；後端也能快取，減少呼叫次數 |
+| W2 | 即時雨量用 O-A0002-001 自動雨量站（約 1,340 站），取最近站「過去 1 小時雨量」，15 km 外不採用 | 雨量站比氣象站密很多；先實際呼叫確認欄位（WGS84 座標、負值為無資料代碼） |
+| W3 | 降雨機率用鄉鎮 3 天逐 3 小時預報（F-D0047 每縣市一個資料集，22 個代碼逐一呼叫確認） | 1 週預報是逐 12 小時，太粗 |
+| W4 | 規則：1 小時雨量 ≥ 0.5 mm 或目前時段降雨機率 ≥ 60% → 雨天模式，否則晴天模式 | 0.5 mm 是氣象上「有降雨」的常用門檻；60% 是「很可能下雨」 |
+| W5 | 「自動」預設關閉，使用者選了才開，記在手機；手動選其他天候即關閉 | 不改變原本預設畫面（全部天候）；使用者明確知道目前是自動 |
+| W6 | 只在已有定位權限時用 GPS，否則用路線起點 | 不在打開 App 時跳出權限詢問；平板沒 GPS 也能用 |
+
+## 2026-10-20 Codex 實測修復
+
+| # | 決策 | 理由 |
+|---|---|---|
+| Q2 | `/api/hotspots/near?complete=true` 回傳半徑內全部候選（半徑上限仍為 5km），供範圍預覽與背景守護使用；一般排行維持 limit | 台北車站 500m 實有 23 處，但取 5km 前 200 名後只剩 8 處；守護 3km 前 200 名也漏掉 118.6m 外的路口。完整 3km 候選實測 506 處、約 0.5 秒 |
+| T2 | Windows 的 `scripts/server.py` 明確指定 Uvicorn 自訂 Selector 迴圈；其他平台不改 | 實測 Python 3.11 Proactor 的 accept 發生 WinError 64 後關閉監聽 socket，程序仍在但新連線全部被拒絕。修正後實測 200 次 TCP RST＋100 次 health 查詢成功。只影響 API 行程，不改系統設定 |
+
+事件迴圈參考：[Uvicorn 自訂迴圈](https://uvicorn.dev/concepts/event-loop/)、[Python 3.11 平台限制](https://docs.python.org/3.11/library/asyncio-platforms.html)。Windows Selector 僅支援 socket、最多 512 個，適用目前本機課程展示；未使用 asyncio 子程序。雲端 Linux 繼續使用原本的自動迴圈選擇。
+
+## AI 任務 2：天候風險校正（2026-10-20）
+
+| # | 決策 | 理由 |
+|---|---|---|
+| R1 | 雨量用氣象署 C-B0025-001 每日雨量（38 個測站，2026-01-01 起），每個行政區對應 30 km 內最近測站，當天 ≥ 1 mm 為雨天 | 逐時資料（C-B0024）只有最近幾天，無法對回 1–10 月事故；雨量站（O-A0002）只有即時值 |
+| R2 | 每日事故數用 Poisson 迴歸（行政區＋星期幾＋雨量強度），和「行政區平均」「行政區＋星期幾」比較 deviance | 要先控制星期幾（週末事故少），才看得出雨量本身的影響 |
+| R3 | 不做「各區各自的雨天倍數」 | 實測加入「行政區 × 雨天」交互作用後，測試期 deviance 變差（1.524 vs 1.513），屬過度擬合 |
+| R4 | 路口雨天標記改成：路口雨天事故占比 vs 同區預期占比，二項檢定＋Benjamini–Hochberg（5%），事故 < 8 件不檢定 | 舊做法（天候欄雨天占比 ≥ 20%）標的路口，測試期實際 ÷ 預期 1.02，和其他路口 1.01 沒差別，是雜訊；上千個路口同時檢定必須控制誤報 |
+| R5 | 路口報告優先用校正結果；沒有校正資料（沒金鑰或附近沒測站）才退回天候欄判斷 | 不讓沒有統計根據的「雨天特別容易出事」出現在 App |
+
+結果與數字見 [ai-report-rain.md](ai-report-rain.md)。

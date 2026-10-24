@@ -1,0 +1,60 @@
+# 機密設定
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.pem
+*.key
+*.p12
+*.mobileprovision
+
+# 公開副本在本機產生，不放回原專案的 Git
+/public-release/
+
+# 本機工具與資料（可由腳本重建）
+tools/
+db/pgdata/
+db/*.log
+data/raw/
+data/interim/
+logs/
+run/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.uv-python/
+.pytest_cache/
+*.egg-info/
+
+# Node / 前端
+node_modules/
+frontend/dist/
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/local.properties
+frontend/android/app/src/main/assets/public/
+
+# 模型檔（大檔不進 Git，用訓練腳本重建；只保留中繼資料）
+ai/models/*.joblib
+
+# 系統
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
+.claude/*.lock
+.playwright-mcp/
+dist/
+frontend/test-results/
+frontend/playwright-report/
+
+# 各人的本機 agent 設定不公開
+.mcp.json
+.codex/
+.claude/
+
+# 本機產生的報告與其他輸出
+/output/

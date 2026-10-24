@@ -1,0 +1,1383 @@
+/* 各頁面專屬樣式 */
+
+/* 地圖頁 */
+.map-page {
+  background: var(--bg);
+}
+#map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--card-2);
+}
+/* Apple 地圖風格：浮動卡片式抽屜（四角圓、離邊緣一點距離）、左上天氣膠囊、抽屜上方的圓鈕與直式膠囊 */
+.map-page .sheet {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 28px;
+  height: calc(100% - var(--safe-top) - 74px);
+  border: 0.5px solid var(--glass-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.22);
+}
+.wx-pill {
+  position: absolute;
+  z-index: 26;
+  left: 12px;
+  top: calc(var(--safe-top) + 10px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 12px 0 10px;
+  border-radius: 14px;
+  background: var(--glass-strong);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+  border: 0.5px solid var(--glass-border);
+  color: var(--label);
+  transition: opacity 0.25s;
+}
+.wx-pill .wx-ic {
+  font-size: 24px;
+  display: grid;
+  color: #ffcc00;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.25));
+}
+.wx-pill.rainy .wx-ic {
+  color: var(--blue);
+  filter: none;
+}
+.wx-pill .wx-t {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.wx-pill .wx-tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 9px;
+  background: var(--blue);
+  color: #fff;
+  margin-left: 2px;
+}
+.wx-pill.filtered .wx-tag {
+  background: var(--indigo);
+}
+.map-page.walking .wx-pill {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sheet-ctrls {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 100%;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.sheet-ctrls > * {
+  pointer-events: auto;
+}
+.sheet.full .sheet-ctrls {
+  opacity: 0;
+  pointer-events: none;
+}
+.sheet.full .sheet-ctrls > * {
+  pointer-events: none;
+}
+.sheet-ctrls .fab {
+  width: 50px;
+  height: 50px;
+  font-size: 22px;
+  color: var(--label);
+  background: var(--glass-strong);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+}
+.sheet-ctrls .fab-round {
+  border-radius: 50%;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  border: 0.5px solid var(--glass-border);
+}
+.sheet-ctrls .fab-round.on {
+  background: var(--blue);
+  color: #fff;
+}
+/* 地圖左下角的 App 名稱（像 Google 地圖的「Google Maps」字樣，改用 Apple 風格的圓體粗字） */
+.map-brand {
+  pointer-events: none;
+  padding: 0 0 4px 6px;
+}
+.fab-capsule .fab-guard.on {
+  background: var(--blue);
+  color: #fff;
+}
+/* 參考 Google 地圖的字樣：小、半粗；淺色地圖用灰字白邊，深色地圖用淺字深邊 */
+.mb-t {
+  font-family: var(--font-rounded);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: rgba(60, 64, 67, 0.82);
+  text-shadow: 0 0 1px #fff, 0 0 2px #fff, 0 0 3px rgba(255, 255, 255, 0.9);
+}
+:root[data-theme="dark"] .mb-t {
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 0 1px #000, 0 0 2px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mb-t {
+    color: rgba(255, 255, 255, 0.86);
+    text-shadow: 0 0 1px #000, 0 0 2px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5);
+  }
+}
+.map-page .leaflet-control-attribution {
+  display: none;
+} /* 地圖資料來源標示在「設定 → 關於」（原本被抽屜蓋住） */
+.fab-capsule {
+  display: flex;
+  flex-direction: column;
+  border-radius: 25px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  border: 0.5px solid var(--glass-border);
+}
+.fab-capsule .fab {
+  border-radius: 0;
+}
+.fab-capsule .fab + .fab {
+  border-top: 0.5px solid var(--sep);
+}
+
+.ap-search {
+  height: 46px;
+  border-radius: 23px;
+  padding: 0 14px;
+  margin-top: 2px;
+  gap: 10px;
+}
+.ap-search .icon {
+  font-size: 19px;
+}
+.ap-search .q {
+  font-size: 17px;
+}
+.ap-mode {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--label-2);
+}
+/* 搜尋列右邊的 ✕：清除路線進入探索模式（沒有路線時不顯示） */
+.ap-clear {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-right: -4px;
+  background: var(--label-3);
+  color: var(--bg);
+  font-size: 12px;
+}
+.map-page.exploring .ap-clear {
+  display: none;
+}
+.map-page.exploring .ap-card-ic {
+  background: linear-gradient(160deg, #5ac8fa, var(--blue));
+}
+.ap-sec {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 16px 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ap-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 8px 11px 12px;
+  border-radius: 18px;
+  background: var(--fill);
+}
+.ap-card-ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 20px;
+  background: linear-gradient(160deg, #ff6b5f, var(--red));
+}
+.ap-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ap-card-t {
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ap-card-t b {
+  font-family: var(--font-rounded);
+}
+.ap-card-s {
+  font-size: 14px;
+  color: var(--label-2);
+}
+.ap-card-s b {
+  font-weight: 600;
+  color: var(--label);
+}
+.ap-card-note {
+  font-size: 12px;
+  color: var(--label-3);
+}
+.conn-wrap {
+  margin-left: auto;
+}
+.conn-wrap .pill {
+  font-size: 12px;
+}
+.ap-more {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--label);
+  font-size: 22px;
+  flex: none;
+}
+.ap-more:active {
+  background: var(--fill-2);
+}
+.ap-quick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.ap-quick button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0;
+  min-width: 0;
+}
+.ap-quick .qi {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 26px;
+  margin-bottom: 5px;
+  box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s;
+}
+.ap-quick button:active .qi {
+  transform: scale(0.92);
+}
+.ap-quick b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ap-quick small {
+  font-size: 12px;
+  color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.sheet-head .link-btn {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 500;
+}
+.head-count:not(:empty) {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: var(--red);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-rounded);
+}
+/* 規劃路線：交通方式改成一行小字（預設自動），點了才選 */
+.mode-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 4px 0;
+  font-size: 15px;
+  color: var(--label-2);
+  font-weight: 500;
+}
+.mode-pick .icon {
+  color: var(--blue);
+}
+.mode-pick .caret {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* 路口體檢報告：AI 預測（精簡版：兩個選項＋前 3 名） */
+.ai-chips {
+  margin: 10px 0 4px;
+  flex-wrap: wrap;
+  overflow: visible;
+  padding: 0;
+  align-items: center;
+}
+.ai-chips .chip.on {
+  background: var(--purple);
+}
+.ai-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
+  padding: 4px 9px;
+  border-radius: 10px;
+}
+.ai-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--purple) 10%, transparent);
+}
+.ai-top-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ai-top .ai-cause {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.ai-tip {
+  font-size: 13px;
+  color: var(--label-2);
+  line-height: 1.4;
+}
+.ai-rank {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  font-family: var(--font-rounded);
+}
+.ai-rank.sm {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--purple) 55%, transparent);
+}
+.ai-pct {
+  font-family: var(--font-rounded);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--purple);
+  flex: none;
+}
+.ai-pct.sm {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--label-2);
+}
+.ai-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 0;
+}
+.ai-row .ai-cause {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 路口體檢報告：「什麼時候容易出事」一句話說明 */
+.when-card {
+  padding: 14px 16px;
+}
+.when-text {
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--label);
+}
+.when-text b {
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+/* 設定：開發者選項的說明可換行，不被截斷 */
+[data-dev] .cell-sub,
+.dev-perm {
+  white-space: normal !important;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.35;
+}
+
+/* 排行頁 */
+.link-btn {
+  color: var(--blue);
+  font-size: 15px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0;
+}
+.rank-search .q-ph {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-search.has-q {
+  color: var(--label);
+  font-weight: 500;
+}
+.rank-seg {
+  margin-top: 12px;
+}
+.rank-chips {
+  margin-top: 12px;
+}
+.rank-chips .rank-act {
+  display: contents;
+}
+.scope-chip .sc-t {
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-head {
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 排行清單：名次、文字、件數三欄對齊；件數欄固定寬度讓數字直向對齊 */
+.rank-cell {
+  gap: 12px;
+  min-height: 64px;
+  --sep-inset: 62px;
+}
+.rank-cell .cell-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+.rank-cell .cell-title,
+.rank-cell .cell-sub {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-cell .hs-count {
+  width: 44px;
+  text-align: center;
+}
+.rank-cell .chev {
+  margin-left: -4px;
+}
+
+/* 附近範圍選擇（小地圖＋距離） */
+/* 內容在視窗中垂直置中（略偏上），地圖約半個螢幕高，下方不要留一大片空白 */
+.rp-wrap {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 4vh;
+}
+.rp-map {
+  height: min(50vh, 440px);
+  min-height: 240px;
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  background: var(--card-2);
+  flex: none;
+}
+.rp-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.rp-num {
+  font-size: 34px;
+  font-weight: 800;
+  font-family: var(--font-rounded);
+  letter-spacing: -0.02em;
+}
+.rp-text {
+  font-size: 15px;
+  color: var(--label-2);
+}
+.rp-levels {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 6px 0 16px;
+  font-size: 13px;
+  color: var(--label-2);
+}
+.rp-lv {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rp-lv i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.summary-row .mini {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 9px 12px 8px;
+}
+.summary-row .mini .num {
+  font-size: 22px;
+  font-weight: 700;
+  display: block;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+.summary-row .mini span:last-child {
+  font-size: 12px;
+  color: var(--label-2);
+  font-weight: 500;
+}
+.hs-cell {
+  gap: 12px;
+}
+.rank {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-rounded);
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+}
+.rank.high {
+  background: linear-gradient(160deg, #ff6b5f, var(--red));
+}
+.rank.medium {
+  background: linear-gradient(160deg, #ffb340, var(--orange));
+}
+.rank.low {
+  background: linear-gradient(160deg, #ffe066, #f5b800);
+}
+.hs-count {
+  text-align: right;
+  flex: none;
+}
+.hs-count .num {
+  font-size: 19px;
+  font-weight: 700;
+  display: block;
+  line-height: 1.1;
+}
+.hs-count small {
+  font-size: 11px;
+  color: var(--label-2);
+}
+
+/* Leaflet 標記與外觀 */
+.leaflet-container {
+  font-family: var(--font);
+  background: var(--card-2);
+}
+.leaflet-control-attribution {
+  font-size: 9.5px !important;
+  background: var(--glass) !important;
+  color: var(--label-2) !important;
+  border-radius: 6px 0 0 0;
+  backdrop-filter: blur(10px);
+}
+.leaflet-control-attribution a {
+  color: var(--label-2) !important;
+}
+.leaflet-control-zoom {
+  display: none;
+}
+.hs-marker {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+/* Apple 地圖 POI 風格：漸層圓＋白邊＋「!」，不放數字 */
+.hs-marker .core {
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  font-family: var(--font-rounded);
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 0.25s var(--spring);
+}
+.hs-marker.high .core {
+  background: linear-gradient(170deg, #ff6b5f, #e5281c);
+  font-size: 15px;
+}
+.hs-marker.medium .core {
+  background: linear-gradient(170deg, #ffb340, #f08a00);
+}
+.hs-marker.low .core {
+  background: linear-gradient(170deg, #ffd84a, #e9ac00);
+  font-size: 11px;
+}
+.hs-marker.selected {
+  z-index: 1;
+}
+/* 拉遠：縮成小圓點、不顯示「!」與脈動（選取的除外） */
+#map.far .hs-marker:not(.selected) .core {
+  transform: scale(0.55);
+  font-size: 0;
+  border-width: 2.5px;
+}
+#map.far .hs-marker:not(.selected)::before {
+  display: none;
+}
+.hs-marker.selected .core {
+  transform: scale(1.45);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+.hs-label {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--label);
+  pointer-events: none;
+  text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg);
+}
+.hs-marker.high::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--red);
+  opacity: 0.22;
+  animation: pulse-ring 2.6s ease-out infinite;
+}
+/* 起點：藍點白圈；終點：紅色圓形圖釘 */
+.start-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0a84ff;
+  border: 3.5px solid #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35), 0 0 0 6px rgba(10, 132, 255, 0.18);
+}
+.end-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(200deg, #ff6b5f, #e5281c);
+  border: 2.5px solid #fff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+}
+.end-pin span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+}
+/* 路線上的時間泡泡（Apple 地圖「7 分鐘」） */
+.route-bubble {
+  position: absolute;
+  left: 0;
+  bottom: 14px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 7px 13px;
+  border-radius: 12px;
+  background: #1d6ff2;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+.route-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #1d6ff2;
+  transform: rotate(45deg);
+  border-right: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-bottom-right-radius: 3px;
+}
+.report-marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--purple);
+  border: 2.5px solid #fff;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.report-marker.fresh {
+  animation: pop-in 0.5s var(--spring);
+}
+.me-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--blue) 25%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.walker {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 3.5px solid #fff;
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--blue) 22%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  background: var(--glass-strong);
+  color: var(--label);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-2);
+}
+.leaflet-popup-tip {
+  background: var(--glass-strong);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 14px;
+}
+
+/* 霧面卡片（模擬行走面板等浮在地圖上的元件） */
+.glass-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--glass-strong);
+  backdrop-filter: saturate(180%) blur(30px);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  box-shadow: var(--shadow-2);
+  border: 0.5px solid var(--glass-border);
+}
+
+/* 平板／橫式：底部抽屜變成左側浮動面板（類似 iPad 地圖） */
+@media (min-width: 900px) and (orientation: landscape), (min-width: 1100px) {
+  .sheet,
+  .map-page .sheet {
+    left: 16px;
+    right: auto;
+    width: 390px;
+    top: calc(var(--safe-top) + 16px);
+    bottom: 16px;
+    height: auto;
+    border-radius: 28px;
+    transform: none !important;
+    box-shadow: var(--shadow-2);
+    border: 0.5px solid var(--glass-border);
+  }
+  .sheet-grabber {
+    display: none;
+  }
+  .sheet-body {
+    padding-bottom: 16px;
+    padding-top: 12px;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+  /* 平板：控制鈕放到右上、天氣膠囊放在面板右邊 */
+  .sheet-ctrls {
+    position: fixed;
+    left: auto;
+    right: 16px;
+    bottom: auto;
+    top: calc(var(--safe-top) + 16px);
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 0;
+  }
+  .wx-pill {
+    left: 422px;
+    top: calc(var(--safe-top) + 16px);
+  }
+  .guardian-pill {
+    left: 422px;
+    top: calc(var(--safe-top) + 70px);
+  }
+  .tabbar {
+    justify-content: center;
+    gap: 40px;
+  }
+}
+
+/* 路口報告 */
+.report-hero {
+  padding: calc(var(--safe-top) + 52px) 16px 6px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.report-hero .sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.mini-map {
+  height: 160px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 14px;
+  position: relative;
+}
+.chart-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px 16px 12px;
+}
+.chart-card h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-card .hint {
+  font-size: 13px;
+  color: var(--label-2);
+  margin-top: 2px;
+}
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  margin-top: 16px;
+}
+.bars .bar {
+  flex: 1;
+  border-radius: 4px 4px 2px 2px;
+  background: color-mix(in srgb, var(--blue) 30%, transparent);
+  min-height: 3px;
+  transform-origin: bottom;
+  animation: bar-grow 0.7s var(--ease) both;
+}
+.bars .bar.peak {
+  background: var(--blue);
+}
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+.bar-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--label-2);
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.hbars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+.hbar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+.hbar-label span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hbar-label .num {
+  color: var(--label-2);
+  font-weight: 600;
+}
+.hbar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.hbar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transform-origin: left;
+  animation: hbar-grow 0.8s var(--ease) both;
+}
+@keyframes hbar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.stack-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 14px;
+  gap: 2px;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--label-2);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.advice-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  align-items: flex-start;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.advice-item + .advice-item {
+  border-top: 0.5px solid var(--sep);
+}
+.advice-item .icon {
+  font-size: 20px;
+  flex: none;
+  margin-top: 1px;
+}
+.charts-2 {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .charts-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* 回報 */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.cat {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.cat:active {
+  transform: scale(0.96);
+}
+.cat .cat-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 22px;
+}
+.cat.active {
+  border-color: var(--blue);
+}
+.loc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.success {
+  text-align: center;
+  padding: 40px 20px 10px;
+}
+.success .check {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+  animation: pop-in 0.5s var(--spring);
+}
+.feed-time {
+  font-size: 13px;
+  color: var(--label-2);
+  white-space: nowrap;
+}
+.feed-new {
+  animation: feed-flash 2.4s ease-out;
+}
+@keyframes feed-flash {
+  0% {
+    background: color-mix(in srgb, var(--blue) 18%, var(--card));
+  }
+  100% {
+    background: var(--card);
+  }
+}
+
+/* 設定 */
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.app-icon-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 4px;
+  gap: 10px;
+}
+.app-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  background: #1e6a4e; /* App 圖示的綠色 */
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 40px;
+  box-shadow: var(--shadow-1);
+}
+
+/* 後台 */
+.er {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.er-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.er-row code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: var(--fill);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+.er-row .arrow {
+  color: var(--label-3);
+}
+
+/* 首次設定 */
+.onboard {
+  padding: calc(var(--safe-top) + 48px) 24px 24px;
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+}
+.onboard .app-icon {
+  margin: 0 auto 22px;
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  font-size: 52px;
+}
+.feature {
+  display: flex;
+  gap: 16px;
+  text-align: left;
+  align-items: flex-start;
+  margin: 22px 0;
+}
+.feature .icon {
+  font-size: 30px;
+  color: var(--blue);
+  flex: none;
+  margin-top: 2px;
+}
+
+/* 模擬行走：紅框警示 */
+.alert-frame {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  border: 8px solid var(--red);
+  border-radius: 0;
+  box-shadow: inset 0 0 60px color-mix(in srgb, var(--red) 55%, transparent);
+  animation: alert-blink 0.9s ease-in-out infinite alternate;
+}
+@keyframes alert-blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+/* Android 實機修正 */
+/* Android WebView 不一定會真的模糊背景（backdrop-filter），半透明會讓底下文字透出來，
+   所以 App 內改用接近實色的材質（等同 iOS「降低透明度」的外觀） */
+html.no-blur {
+  --glass: rgb(247, 247, 249);
+  --glass-strong: rgb(249, 249, 251);
+}
+/* 實測：S21 FE 的 WebView 開啟 backdrop-filter 時，會把底下內容以半透明重疊畫出來（不是正常模糊），一律關閉 */
+html.no-blur *,
+html.no-blur *::before,
+html.no-blur *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.no-blur[data-theme="dark"] {
+  --glass: rgb(30, 30, 32);
+  --glass-strong: rgb(28, 28, 30);
+}
+@media (prefers-color-scheme: dark) {
+  html.no-blur:not([data-theme="light"]) {
+    --glass: rgb(30, 30, 32);
+    --glass-strong: rgb(28, 28, 30);
+  }
+}
+/* 動作表一律用實色卡片 */
+.as-group {
+  background: var(--card);
+}
+:root[data-theme="dark"] .as-group {
+  background: #2c2c2e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .as-group {
+    background: #2c2c2e;
+  }
+}
+
+/* Leaflet 彈出框：提高權重蓋過 leaflet.css 的白底 */
+.leaflet-container .leaflet-popup-content-wrapper {
+  background: var(--card);
+  color: var(--label);
+  border-radius: 14px;
+  box-shadow: var(--shadow-2);
+}
+.leaflet-container .leaflet-popup-tip {
+  background: var(--card);
+}
+.leaflet-container .leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--label-2);
+}
+
+/* 模擬行走時收起底部抽屜，面板直接浮在地圖上 */
+.map-page.walking .sheet-clip {
+  transform: translateY(110%);
+  transition: transform 0.4s var(--ease);
+}
+.map-page .sheet-clip {
+  transition: transform 0.4s var(--ease);
+}
+/* 清單內的分段控制撐滿整列；狀態文字不被擠成直排 */
+.cell > .segmented {
+  flex: 1;
+}
+.server-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.server-status > * {
+  white-space: nowrap;
+}
+.cell-value {
+  flex-shrink: 0;
+}
+.cell-main {
+  flex: 1 1 auto;
+}
+
+.ai-card.loading {
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+/* 背景守護：地圖左上角的狀態膠囊 */
+.guardian-pill {
+  position: absolute;
+  z-index: 26;
+  left: 12px;
+  top: calc(var(--safe-top) + 64px);
+  max-width: calc(100% - 90px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 8px;
+  border-radius: 22px;
+  text-align: left;
+  background: var(--glass-strong);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: var(--shadow-1);
+  border: 0.5px solid var(--glass-border);
+  animation: pop-in 0.35s var(--spring);
+}
+.guardian-pill .g-ic {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex: none;
+  position: relative;
+}
+.guardian-pill .g-ic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--blue);
+  animation: pulse-ring 2s ease-out infinite;
+  z-index: -1;
+}
+.guardian-pill .g-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.guardian-pill b {
+  font-size: 14px;
+}
+.guardian-pill .g-sub {
+  font-size: 12px;
+  color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
