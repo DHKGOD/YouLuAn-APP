@@ -47,7 +47,7 @@
 | F4 | 地名顯示 `name:zh-Hant` → `name` | 台灣的 `name` 本身是繁體，`name:zh` 常是簡體 |
 | F5 | Capacitor `androidScheme: http` ＋ network_security_config 允許明文 | 本機階段手機用 http 連區網 IP（IP 會變，無法逐一列出）；上雲端改 HTTPS 後可關閉 |
 | F6 | 伺服器位址存在 App 的 localStorage，設定頁可改、輸入會自動把全形符號轉半形 | 換雲端不必重新打包；中文輸入法常打出全形「：」 |
-| F7 | 即時回報用 `since_id` 每 5 秒輪詢（不用 WebSocket） | 簡單、穿過任何代理／雲端主機都能用 |
+| F7 | 使用者回報與動態牆取消（2026-10-28） | 依使用者決定，保留官方歷史事故查詢及家人路線分享 |
 
 ## 2026-10-20 產品方向（使用者提議）
 

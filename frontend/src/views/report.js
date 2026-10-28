@@ -1,4 +1,4 @@
-// 路口體檢報告頁：事故數、什麼時候容易出事、時段分布、主要肇因與型態（前 3）、AI 預測、車種與天候、最近事故、附近回報、匯出
+// 路口體檢報告頁：事故數、什麼時候容易出事、時段分布、主要肇因與型態（前 3）、AI 預測、車種與天候、最近事故、匯出
 import { api } from '../api.js'
 import { exportReport } from '../export.js'
 import { elderMode } from '../family.js'
@@ -209,28 +209,6 @@ export function reportView(h, { back = '地圖' } = {}) {
             </div>`
             )
             .join('')}
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-header">附近的使用者回報（120 公尺內）</div>
-        <div class="list">
-          ${
-            d.user_reports.length
-              ? d.user_reports
-                  .map(
-                    (r) => `
-            <div class="cell" style="--sep-inset:58px">
-              <span class="cell-icon" style="background:var(--purple)">${icon('bubble')}</span>
-              <span class="cell-main"><span class="cell-title" style="display:block">${esc(
-                r.description || '差點被撞'
-              )}</span>
-              <span class="cell-sub" style="display:block">${fmt.ago(r.created_at)}</span></span>
-            </div>`
-                  )
-                  .join('')
-              : '<div class="cell"><span class="cell-sub">目前沒有回報</span></div>'
-          }
         </div>
       </div>
       ${disclaimer(d.disclaimer)}`

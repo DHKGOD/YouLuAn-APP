@@ -20,7 +20,6 @@ TABLES = [
     ("cause_code", "肇因代碼"),
     ("collision_type", "事故類型及型態代碼"),
     ("import_batch", "匯入批次（原始檔）"),
-    ("user_report", "使用者回報"),
     ("model_version", "AI 模型版本"),
     ("prediction", "AI 預測紀錄"),
     ("shared_route", "家人分享路線"),

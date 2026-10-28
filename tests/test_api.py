@@ -116,6 +116,7 @@ def test_areas_for_custom_ranking(client):
 def test_report(client):
     hid = client.get("/api/hotspots/top", params={"limit": 1}).json()["hotspots"][0]["id"]
     rep = client.get(f"/api/hotspots/{hid}/report").json()
+    assert "user_reports" not in rep
     assert len(rep["hourly"]) == 24
     assert sum(rep["hourly"]) == rep["summary"]["accidents"]
     assert rep["advice"]["road_user"]
@@ -140,17 +141,11 @@ def test_rain_risk_stats():
     assert R.deviance(y, np.full(3, 1.0)) > 0
 
 
-def test_create_and_poll_report(client):
-    before = client.get("/api/reports", params={"limit": 1}).json()
-    since = before[0]["id"] if before else 0
-    r = client.post("/api/reports", json={"lat": FJU[0], "lon": FJU[1] + 0.001, "category": "near_miss",
-                                          "description": "pytest 測試回報", "device_id": "pytest"})
-    assert r.status_code == 201
-    new = r.json()
-    polled = client.get("/api/reports", params={"since_id": since}).json()
-    assert any(p["id"] == new["id"] for p in polled)
-    with db.conn() as c:  # 清掉測試資料
-        c.execute("DELETE FROM user_report WHERE device_id = 'pytest'")
+def test_user_reporting_is_removed(client):
+    assert client.get('/api/reports').status_code == 404
+    assert client.post('/api/reports', json={'lat': FJU[0], 'lon': FJU[1]}).status_code == 404
+    paths = client.get('/openapi.json').json()['paths']
+    assert '/api/reports' not in paths
 
 
 def test_share_route_roundtrip(client):
@@ -222,5 +217,5 @@ def test_weather_decision(monkeypatch):
     assert d["rain_1h_mm"] is None and d["suggested_mode"] == "clear"
 
 
-def test_report_validation(client):
-    assert client.post("/api/reports", json={"lat": 0, "lon": 0}).status_code == 422
+def test_removed_reporting_rejects_invalid_input_too(client):
+    assert client.post("/api/reports", json={"lat": 0, "lon": 0}).status_code == 404

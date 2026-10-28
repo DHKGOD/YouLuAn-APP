@@ -277,7 +277,7 @@
 }
 .ap-quick {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 .ap-quick button {
@@ -795,22 +795,6 @@
   border-bottom: 1.5px solid rgba(255, 255, 255, 0.85);
   border-bottom-right-radius: 3px;
 }
-.report-marker {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--purple);
-  border: 2.5px solid #fff;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-.report-marker.fresh {
-  animation: pop-in 0.5s var(--spring);
-}
 .me-dot {
   width: 20px;
   height: 20px;
@@ -1060,78 +1044,6 @@
 @media (min-width: 700px) {
   .charts-2 {
     grid-template-columns: 1fr 1fr;
-  }
-}
-
-/* 回報 */
-.cat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-.cat {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 16px 8px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  border: 2px solid transparent;
-  transition: border-color 0.2s, transform 0.15s;
-}
-.cat:active {
-  transform: scale(0.96);
-}
-.cat .cat-ic {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: 22px;
-}
-.cat.active {
-  border-color: var(--blue);
-}
-.loc-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.success {
-  text-align: center;
-  padding: 40px 20px 10px;
-}
-.success .check {
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  background: var(--green);
-  color: #fff;
-  font-size: 44px;
-  display: grid;
-  place-items: center;
-  margin: 0 auto 18px;
-  animation: pop-in 0.5s var(--spring);
-}
-.feed-time {
-  font-size: 13px;
-  color: var(--label-2);
-  white-space: nowrap;
-}
-.feed-new {
-  animation: feed-flash 2.4s ease-out;
-}
-@keyframes feed-flash {
-  0% {
-    background: color-mix(in srgb, var(--blue) 18%, var(--card));
-  }
-  100% {
-    background: var(--card);
   }
 }
 

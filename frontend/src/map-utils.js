@@ -152,14 +152,6 @@ export function routeBubble(text) {
   })
 }
 
-export const reportIcon = (fresh = false) =>
-  L.divIcon({
-    className: '',
-    html: `<div class="report-marker${fresh ? ' fresh' : ''}">!</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  })
-
 export const meIcon = () =>
   L.divIcon({
     className: '',

@@ -324,42 +324,16 @@ test('模擬行走：開始時收起抽屜、關閉地圖彈出框', async ({ pa
   await expect(page.locator('.map-page')).not.toHaveClass(/walking/)
 })
 
-test('回報差點被撞：送出 → 資料庫 → 動態牆即時出現', async ({ page, request }) => {
+test('回報入口與輪詢已移除，仍可查看歷史路口報告', async ({ page }) => {
+  const reportingRequests = []
+  page.on('request', request => { if (new URL(request.url()).pathname === '/api/reports') reportingRequests.push(request.url()) })
   await openApp(page)
-  await page.locator('[data-tab="feed"]').click()
-  await page.locator('.feed-list').waitFor()
-  await page.locator('button[data-new]').last().click()
-  const modal = page.locator('.modal')
-  await expect(modal.locator('.sub-map .leaflet-marker-pane, .sub-map canvas, .sub-map .leaflet-gl-layer').first()).toBeAttached()
-  await expect(modal.locator('.coord')).toContainText('緯度')
-  await modal.locator('[data-cat="hazard"]').click()
-  await expect(modal.locator('[data-cat="hazard"]')).toHaveClass(/active/)
-  const desc = `${E2E_TAG} ${Date.now()}`
-  await modal.locator('textarea').fill(desc)
-  await modal.locator('[data-send]').click()
-  await expect(modal.locator('.success')).toBeVisible()
-  const id = Number((await modal.locator('.success').textContent()).match(/#(\d+)/)[1])
-  // 後端（資料庫）查得到
-  const rows = await (await request.get('/api/reports?limit=5')).json()
-  const row = rows.find((r) => r.id === id)
-  expect(row?.description).toBe(desc)
-  expect(row?.category).toBe('hazard')
-  await modal.locator('[data-done]').click()
-  // 動態牆出現這筆
-  await expect(page.locator('.feed-list .cell', { hasText: desc })).toBeVisible({ timeout: 12_000 })
-})
-
-test('另一台裝置的回報會即時出現在地圖與通知', async ({ page, request }) => {
-  await openApp(page)
-  await page.waitForTimeout(1500)
-  const desc = `${E2E_TAG} 其他裝置 ${Date.now()}`
-  const res = await request.post('/api/reports', { data: { lat: 25.0362, lon: 121.4400, category: 'near_miss', description: desc, device_id: 'e2e-other' } })
-  expect(res.status()).toBe(201)
-  await expect(page.locator('.toast', { hasText: '新回報' })).toBeVisible({ timeout: 12_000 })
-  await expect(page.locator('[data-tab="feed"] .badge')).toBeVisible()
-  await page.locator('[data-tab="feed"]').click()
-  await expect(page.locator('.feed-list .cell', { hasText: desc })).toBeVisible()
-  await expect(page.locator('[data-tab="feed"] .badge')).toHaveCount(0)
+  await expect(page.locator('.tabbar button')).toHaveCount(3)
+  await expect(page.locator('[data-tab="feed"], [data-act="report"], [data-new]')).toHaveCount(0)
+  await page.locator('.leaflet-marker-icon .hs-marker.high').first().click({ force: true })
+  await page.locator('.leaflet-popup [data-open]').click()
+  await expect(page.locator('.report-hero')).toBeVisible()
+  expect(reportingRequests).toEqual([])
 })
 
 test('排行：附近（GPS 目前位置）／全國、開報告', async ({ page }) => {

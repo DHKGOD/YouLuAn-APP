@@ -178,14 +178,6 @@ def report(hotspot_id: int) -> dict[str, Any]:
         rain = c.execute("""SELECT r.level, r.accidents, r.rainy_accidents, r.expected_share, mv.version
                             FROM hotspot_rain_risk r LEFT JOIN model_version mv ON mv.id = r.model_version_id
                             WHERE r.hotspot_id = %(id)s""", {"id": hotspot_id}).fetchone()
-        if db.postgis:
-            reports = c.execute("""SELECT id, created_at, category, description FROM user_report
-                                   WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography, 120)
-                                   ORDER BY created_at DESC LIMIT 10""", {"lat": h["lat"], "lon": h["lon"]}).fetchall()
-        else:
-            reports = c.execute(f"""SELECT id, created_at, category, description FROM user_report
-                                    WHERE {haversine_sql('lat', 'lon')} <= 120
-                                    ORDER BY created_at DESC LIMIT 10""", {"lat": h["lat"], "lon": h["lon"]}).fetchall()
 
     total = h["accident_count"] or 1
     party_total = sum(r["n"] for r in ages) or 1
@@ -205,7 +197,7 @@ def report(hotspot_id: int) -> dict[str, Any]:
         "weather": weather, "light": light, "causes": causes, "collisions": collisions,
         "vehicles": vehicles,
         "ages": sorted(ages, key=lambda r: age_order.index(r["name"])),
-        "recent_accidents": recent, "user_reports": reports,
+        "recent_accidents": recent,
         # AI 任務 2：測站實際雨量校正後的雨天標記（ai/rain_risk.py）；沒有資料時為 null，前端退回天候欄判斷
         "rain_risk": rain,
         "advice": build_advice([r["name"] for r in causes[:3]], [r["name"] for r in collisions[:2]],

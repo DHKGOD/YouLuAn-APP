@@ -2,16 +2,7 @@
 import { Geolocation } from '@capacitor/geolocation'
 import { api } from '../api.js'
 import { icon } from '../icons.js'
-import {
-  L,
-  createMap,
-  drawRoute,
-  hotspotIcon,
-  meIcon,
-  pinIcon,
-  reportIcon,
-  routeBubble,
-} from '../map-utils.js'
+import { L, createMap, drawRoute, hotspotIcon, meIcon, pinIcon, routeBubble } from '../map-utils.js'
 import {
   DEMO,
   MODE_LABEL,
@@ -80,7 +71,7 @@ function midpoint(points) {
   return points[0]
 }
 
-export function mapView({ openReport, openSubmit, startWalk }) {
+export function mapView({ openReport, startWalk }) {
   const page = el(`
     <section class="page map-page">
       <div id="map"></div>
@@ -118,7 +109,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
               <span class="ap-card-t"><b class="s-count">–</b> 個危險路口<span class="conn-wrap"><span class="pill conn high" hidden>${icon(
                 'warning'
               )}離線</span></span></span>
-              <span class="ap-card-s">事故 <b class="s-acc">–</b> 件・回報 <b class="s-rep">–</b> 則</span>
+              <span class="ap-card-s">事故 <b class="s-acc">–</b> 件</span>
               <span class="ap-card-note">依 115 年 1–10 月官方事故統計</span>
             </span>
             <button class="ap-more" data-act="more" aria-label="更多">${icon('ellipsis')}</button>
@@ -131,9 +122,6 @@ export function mapView({ openReport, openSubmit, startWalk }) {
             <button data-act="guardian"><span class="qi" style="background:var(--teal)">${icon(
               'shield'
             )}</span><b>背景守護</b><small class="q-guard">未開啟</small></button>
-            <button data-act="report"><span class="qi" style="background:var(--purple)">${icon(
-              'plus'
-            )}</span><b>回報</b><small>差點被撞</small></button>
             <button data-act="period"><span class="qi" style="background:var(--orange)">${icon(
               'clock'
             )}</span><b>時段</b><small class="q-period">全天</small></button>
@@ -147,7 +135,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
 
   const mapEl = $('#map', page)
   const sheet = $('.sheet', page)
-  let map, routeLayer, pinsLayer, hsLayer, repLayer, meMarker
+  let map, routeLayer, pinsLayer, hsLayer, meMarker
   let hotspots = []
   let selected = null
   let loadSeq = 0
@@ -205,7 +193,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
     if (map) return
     map = createMap(mapEl, { zoomSnap: 0.25 })
     hsLayer = L.layerGroup().addTo(map)
-    repLayer = L.layerGroup().addTo(map)
+
     // 地圖拉遠時危險點縮成小圓點（像 Apple 地圖），拉近才顯示完整圖示，避免擠成一團
     const zoomClass = () => mapEl.classList.toggle('far', map.getZoom() < 15.5)
     map.on('zoomend', zoomClass)
@@ -231,13 +219,8 @@ export function mapView({ openReport, openSubmit, startWalk }) {
       clearTimeout(moveTimer)
       moveTimer = setTimeout(load, 400)
     })
-    // 長按地圖 → 在該位置回報
-    map.on('contextmenu', (e) => {
-      haptic(15)
-      openSubmit({ lat: e.latlng.lat, lon: e.latlng.lng })
-    })
+
     load()
-    drawReports()
   }
 
   function drawRouteLayer(animate = true) {
@@ -335,7 +318,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
         if (q.tooFar) {
           hotspots = []
           drawHotspots()
-          drawReports() // 附近回報數跟著目前地圖範圍更新
+
           $('.hs-list', page).innerHTML = emptyState(
             'search',
             '放大地圖看危險路口',
@@ -358,7 +341,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
       emit('route-hotspots', hotspots)
       renderList()
       drawHotspots()
-      drawReports()
+
       setConn(true)
     } catch (e) {
       if (my !== loadSeq) return
@@ -491,10 +474,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
       if (state.route) fitRoute()
       else locate()
     }
-    if (act === 'report') {
-      const c = map.getCenter()
-      openSubmit({ lat: c.lat, lon: c.lng })
-    }
+
     if (act === 'walk' && !document.querySelector('.walk-panel')) {
       if (!state.route) {
         toast('先規劃路線，才能沿路線模擬行走', { icon: 'walk', color: 'var(--blue)' })
@@ -696,27 +676,6 @@ export function mapView({ openReport, openSubmit, startWalk }) {
     }
   }
 
-  /* 使用者回報標記 */
-  function drawReports(fresh = []) {
-    if (!repLayer) return
-    repLayer.clearLayers()
-    const freshIds = new Set(fresh.map((r) => r.id))
-    state.reports.slice(0, 150).forEach((r) => {
-      L.marker([r.lat, r.lon], { icon: reportIcon(freshIds.has(r.id)), zIndexOffset: 400 })
-        .bindPopup(
-          `<b>${esc(r.category_label)}</b><br>${esc(
-            r.description || '（無描述）'
-          )}<br><span style="color:var(--label-2)">${fmt.ago(r.created_at)}</span>`
-        )
-        .addTo(repLayer)
-    })
-    // 「附近回報」：路線範圍內的回報數
-    const b = routeLayer ? routeLayer.getBounds().pad(0.05) : map?.getBounds() // 探索模式：地圖範圍內
-    $('.s-rep', page).textContent = b
-      ? state.reports.filter((r) => b.contains([r.lat, r.lon])).length
-      : '–'
-  }
-
   /* ---------- 底部抽屜拖曳（四段：最小（只剩搜尋列）／預設／一半／全開） ----------
      觸控用 touch 事件自己處理：未全開時整個抽屜跟著手指走（清單不捲動）；全開時清單可捲動，
      清單已在最上方再往下拉就改成拖抽屜。位移用 requestAnimationFrame 更新，避免卡頓。 */
@@ -864,18 +823,7 @@ export function mapView({ openReport, openSubmit, startWalk }) {
       load()
       setSnap(PEEK)
     }
-    if (type === 'reports') {
-      drawReports(payload.fresh)
-      if (!payload.initial && payload.fresh.length) {
-        const r = payload.fresh.at(-1)
-        toast(`新回報：${r.category_label}${r.hotspot_name ? '・' + r.hotspot_name : ''}`, {
-          icon: 'bubble',
-          color: 'var(--purple)',
-          onClick: () => map && focusPoint([r.lat, r.lon], 17),
-        })
-      }
-    }
-    if (type === 'online') setConn(payload)
+
     if (type === 'live-weather') renderWeatherPill()
     if (type === 'server-changed' && map) load()
     if (type === 'guardian') renderGuardian(payload)

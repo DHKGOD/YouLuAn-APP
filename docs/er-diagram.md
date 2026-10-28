@@ -11,7 +11,6 @@ erDiagram
     cause_code ||--o{ party : "個別肇因"
     collision_type ||--o{ accident : "事故型態"
     hotspot ||--o{ accident : "歸屬路口"
-    hotspot ||--o{ user_report : "附近回報"
     hotspot ||--o{ prediction : "預測對象"
     model_version ||--o{ prediction : "哪一版模型"
     shared_route {
@@ -84,16 +83,6 @@ erDiagram
         int night_count
         float risk_score
     }
-    user_report {
-        bigserial id PK
-        timestamptz created_at
-        float lon
-        float lat
-        text category
-        text description
-        text device_id
-        int hotspot_id FK
-    }
     model_version {
         serial id PK
         text name
@@ -122,3 +111,5 @@ erDiagram
 | 家人模式 | `shared_route` 存子女分享給長輩的路線（6 碼代碼、30 天有效），長輩手機用代碼下載；獨立資料表，不與事故資料關聯。 |
 | 座標品質 | `accident.coord_flag` 記錄座標不可用的原因（out_of_taiwan／shared_default／far_from_district）。 |
 | 可移植 | 一般欄位 `lon/lat` 永遠存在；有 PostGIS 才加 `geom`（產生欄位＋GiST 索引），沒有時 API 改用 haversine 公式。 |
+
+回報功能已取消；舊 migration 中的 user_report 僅保留相容既有資料，不再由 App／API 使用，未刪除既有紀錄。

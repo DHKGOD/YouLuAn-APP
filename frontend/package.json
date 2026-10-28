@@ -1,7 +1,7 @@
 {
   "name": "traffic-safety-app",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "交通安全路口提醒 App 前端（Vite + Leaflet，Capacitor 包成 Android APK）",
   "scripts": {

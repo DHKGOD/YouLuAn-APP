@@ -10,7 +10,6 @@ const COLORS = {
   cause_code: 'var(--teal)',
   collision_type: 'var(--teal)',
   import_batch: 'var(--gray)',
-  user_report: 'var(--purple)',
   model_version: 'var(--indigo)',
   prediction: 'var(--indigo)',
 }

@@ -1,7 +1,8 @@
+import { version } from '../../package.json'
 // 設定：伺服器位址（換雲端不必重新打包）、外觀、後台、關於
-import { api, deviceId, getServer, isNative, normalize, setServer } from '../api.js'
+import { api, getServer, isNative, normalize, setServer } from '../api.js'
 import { icon } from '../icons.js'
-import { DEMO, emit, setRoute, startPolling, state } from '../store.js'
+import { DEMO, emit, setRoute, state } from '../store.js'
 import {
   $,
   DISCLAIMER,
@@ -71,7 +72,7 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
       <div class="list">
         <div class="cell" style="--sep-inset:58px">
           <span class="cell-icon" style="background:var(--blue)">${icon('server')}</span>
-          <input type="url" inputmode="url" class="srv" placeholder="例如 http://192.168.x.x:8000" value="${esc(
+          <input type="url" inputmode="url" class="srv" placeholder="向管理者取得的完整連線位址" value="${esc(
             getServer()
           )}" autocapitalize="off" autocorrect="off" spellcheck="false">
         </div>
@@ -81,7 +82,7 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
         </div>
         <button class="cell tappable" data-test style="justify-content:center;color:var(--blue);font-weight:600">測試連線並儲存</button>
       </div>
-      <div class="section-footer">本機模擬雲端：在電腦執行 start_server.bat，畫面會顯示要輸入的網址（手機需連同一個 Wi-Fi）。搬到雲端主機後，只要在這裡改成新網址即可，不用重新安裝 App。</div>
+      <div class="section-footer">連線位址請向管理者索取。使用外出連線的完整 HTTPS 位址時，可用行動網路或其他 Wi-Fi；若使用區網位址，則需要同一個網路。更換位址後按「測試連線並儲存」，不用重裝 App。</div>
     </div>
 
     <div class="section">
@@ -208,11 +209,6 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
           <span class="cell-main"><span class="cell-title" style="display:block">AI 模型</span></span>
           <span class="cell-value ai-ver">—</span>
         </div>
-        <div class="cell" style="--sep-inset:58px">
-          <span class="cell-icon" style="background:var(--gray)">${icon('person')}</span>
-          <span class="cell-main"><span class="cell-title" style="display:block">裝置代碼</span></span>
-          <span class="cell-value t-footnote">${esc(deviceId())}</span>
-        </div>
       </div>
     </div>
 
@@ -220,7 +216,7 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
       <div class="app-icon-hero">
         <div class="app-icon">${icon('brand')}</div>
         <div class="t-headline">有路安</div>
-        <div class="t-footnote c-2">版本 0.1.0（${isNative() ? 'Android App' : '網頁版'}）</div>
+        <div class="t-footnote c-2">版本 ${version}（${isNative() ? 'Android App' : '網頁版'}）</div>
       </div>
       <div class="card t-footnote c-2" style="margin-top:12px;line-height:1.6">
         ${icon('info')} ${DISCLAIMER}。<br>
@@ -256,7 +252,7 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
         $('.srv', p.el).value = clean
         toast('已儲存伺服器位址')
         emit('server-changed', clean)
-        startPolling()
+
         refreshInfo()
       }
     } catch (e) {

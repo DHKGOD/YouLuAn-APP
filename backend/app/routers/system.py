@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api", tags=["系統"])
 
 TABLES = [
     ("accident", "事故"), ("party", "當事人"), ("hotspot", "危險路口"), ("cause_code", "肇因代碼"),
-    ("collision_type", "事故型態代碼"), ("import_batch", "匯入批次"), ("user_report", "使用者回報"),
+    ("collision_type", "事故型態代碼"), ("import_batch", "匯入批次"),
     ("model_version", "AI 模型版本"), ("prediction", "AI 預測紀錄"), ("shared_route", "家人分享路線"),
 ]
 
@@ -54,6 +54,7 @@ def stats() -> dict[str, Any]:
             JOIN information_schema.constraint_column_usage ccu
               ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
+              AND tc.table_name <> 'user_report' AND ccu.table_name <> 'user_report'
             ORDER BY child, kcu.column_name""").fetchall()
         months = c.execute("""SELECT year, month, count(*) AS n FROM accident GROUP BY year, month
                               ORDER BY year, month""").fetchall()

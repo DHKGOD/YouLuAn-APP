@@ -64,11 +64,6 @@ uv run python scripts/rebuild_db.py --download
   \c traffic
   CREATE EXTENSION IF NOT EXISTS postgis;   -- 沒有 PostGIS 可省略
   ```
-- **搬移使用者回報**（本機已有的資料）：
-  ```bash
-  pg_dump -t user_report -t model_version -t prediction --data-only traffic > reports.sql   # 在本機
-  psql "$DATABASE_URL" -f reports.sql                                                        # 在主機
-  ```
 
 ## 5. 訓練／放置 AI 模型
 
@@ -117,4 +112,4 @@ traffic.example.edu.tw {
 - [ ] `curl https://<網址>/api/health` → `"status":"ok"`
 - [ ] `docs/db-report.md` 的事故件數 284,116、當事人 640,620（或更新後的數字）
 - [ ] 瀏覽器開 `https://<網址>/` 看得到地圖與危險路口
-- [ ] 手機新增回報 → 主機上 `SELECT * FROM user_report ORDER BY id DESC LIMIT 1;` 查得到
+- [ ] 兩台裝置透過六碼分享路線，主機可查到 shared_route 紀錄

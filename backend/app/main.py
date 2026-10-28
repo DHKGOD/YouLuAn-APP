@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .db import db
-from .routers import ai, geo, hotspots, reports, routes, system, weather
+from .routers import ai, geo, hotspots, routes, system, weather
 
 
 @asynccontextmanager
@@ -27,11 +27,16 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_me
 
 app.include_router(system.router)
 app.include_router(hotspots.router)
-app.include_router(reports.router)
 app.include_router(ai.router)
 app.include_router(geo.router)
 app.include_router(routes.router)
 app.include_router(weather.router)
+
+# 未註冊的 API 直接回 404，避免落到前端靜態檔服務。
+@app.api_route('/api/{unmatched:path}', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], include_in_schema=False)
+def unknown_api(unmatched: str):
+    raise HTTPException(404, '找不到這個 API')
+
 
 # 同一個伺服器也提供網頁版前端（電腦用瀏覽器開 http://<IP>:8000/）
 if settings.frontend_dir.exists():

@@ -6,7 +6,8 @@
 
 **查附近路口**：`frontend/src/views/ranking.js` 取得位置 → `api.js` 送出 `/api/hotspots/near` → `backend/app/routers/hotspots.py` 查詢 → PostgreSQL 回傳路口資料 → 畫面顯示清單。
 
-**新增回報**：`views/submit.js` 收集位置與說明 → `routers/reports.py` 寫入 `user_report` → 其他手機的 `store.js` 每五秒查新回報。這個流程可以展示手機透過網路共用資料庫。
+
+**家人路線分享**：`family.js` 傳送路線至 `/api/routes` → `shared_route` 儲存 → 另一台裝置用六碼取得同一路線。
 
 **背景守護**：`guardian.js` 呼叫 Android 外掛 → `GuardianPlugin.java` 啟動 `GuardianService.java` → 服務取得位置，交給 `GuardianEngine.java` 判斷是否接近路口 → 通知、語音或浮動提醒。網頁版沒有這項背景服務。
 
@@ -15,9 +16,9 @@
 | 位置 | 用途 |
 |---|---|
 | `frontend/src/main.js` | App 入口、切換分頁、返回上一頁、首次設定 |
-| `frontend/src/views/` | 地圖、排行、回報、報告、家人路線與設定畫面 |
+| `frontend/src/views/` | 地圖、排行、報告、家人路線與設定畫面 |
 | `frontend/src/api.js` | 儲存伺服器位址、傳送請求、處理逾時與錯誤 |
-| `frontend/src/store.js` | 目前路線、天候、時段及新回報；通知畫面更新 |
+| `frontend/src/store.js` | 目前路線、天候、時段；通知畫面更新 |
 | `frontend/src/ui.js` | 共用按鈕選單、彈出視窗、頁面堆疊與文字格式 |
 | `frontend/src/map-utils.js` | 建立地圖、路口標記、路線，以及底圖斷線重試 |
 | `frontend/src/walk.js` | 畫面中的模擬行走；切到背景時交給 Android 服務 |

@@ -7,9 +7,11 @@ export const isNative = () => Capacitor.isNativePlatform()
 
 /** 網頁版若由後端提供（http://IP:8000/），預設連同一個來源；App 版需要在設定頁輸入。 */
 export function defaultServer() {
+  // 公開安裝檔不內建任何管理者位址，即使建置環境有設定也不採用。
+  if (isNative()) return ''
   if (!isNative() && location.protocol.startsWith('http') && location.port !== '5173')
     return location.origin
-  return import.meta.env.VITE_DEFAULT_SERVER || ''
+  return ''
 }
 
 export function getServer() {
@@ -74,22 +76,10 @@ export async function api(path, { method = 'GET', body, timeout = 12000, server 
     return data
   } catch (error) {
     if (error instanceof ApiError) throw error
-    if (error.name === 'AbortError') throw new ApiError('連線逾時，請確認手機與電腦在同一個 Wi-Fi', 0)
+    if (error.name === 'AbortError') throw new ApiError('連線逾時，請確認網路與伺服器是否正常', 0)
     throw new ApiError('無法連線到伺服器，請到「設定」確認位址', 0)
   } finally {
     clearTimeout(timer)
   }
 }
 
-export function deviceId() {
-  try {
-    let id = localStorage.getItem('deviceId')
-    if (!id) {
-      id = 'dev-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
-      localStorage.setItem('deviceId', id)
-    }
-    return id
-  } catch {
-    return 'dev-anon'
-  }
-}

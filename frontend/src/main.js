@@ -7,15 +7,15 @@ import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { getServer, isNative, setServer } from './api.js'
 import { icon } from './icons.js'
-import { emit, on, startPolling, state } from './store.js'
+import { emit } from './store.js'
 import { $, $$, Stack, el, esc, modalStack, toast } from './ui.js'
 import { adminView } from './views/admin.js'
-import { feedView } from './views/feed.js'
+
 import { mapView } from './views/map.js'
 import { rankingView } from './views/ranking.js'
 import { reportView } from './views/report.js'
 import { applyTheme, savedTheme, settingsView, testServer } from './views/settings.js'
-import { openSubmit } from './views/submit.js'
+
 import { startWalk } from './walk.js'
 import { initGuardian } from './guardian.js'
 import { initWeather } from './weather.js'
@@ -32,7 +32,6 @@ if (isNative() || !CSS.supports('backdrop-filter', 'blur(2px)'))
 const TABS = [
   { id: 'map', label: '地圖', icon: 'map', on: 'mapFill' },
   { id: 'rank', label: '排行', icon: 'trophy', on: 'trophyFill' },
-  { id: 'feed', label: '回報', icon: 'bubble', on: 'bubbleFill' },
   { id: 'settings', label: '設定', icon: 'gear', on: 'gearFill' },
 ]
 
@@ -63,20 +62,6 @@ function switchTab(id) {
   $$('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === id))
   $$('.tab-root').forEach((r) => r.classList.toggle('active', r.dataset.root === id))
   stacks[id].pages.at(-1)?.onShow?.()
-  if (id === 'feed') {
-    state.unseenReports = 0
-    updateBadge()
-  }
-}
-
-function updateBadge() {
-  const tab = $('[data-tab="feed"]')
-  $('.badge', tab)?.remove()
-  if (state.unseenReports > 0 && current !== 'feed')
-    tab.insertAdjacentHTML(
-      'beforeend',
-      `<span class="badge">${Math.min(99, state.unseenReports)}</span>`
-    )
 }
 
 function openReport(hotspot, back) {
@@ -88,25 +73,11 @@ function openReport(hotspot, back) {
 }
 const mapPage = mapView({
   openReport,
-  openSubmit,
   startWalk: (opts) => startWalk({ ...opts, onOpenReport: (h) => openReport(h, '地圖') }),
 })
 stacks.map.setRoot(mapPage)
 stacks.rank.setRoot(rankingView({ openReport }))
-stacks.feed.setRoot(
-  feedView({
-    openSubmit,
-    getCenter: () => {
-      const c = mapPage.map?.getCenter()
-      return c ? { lat: c.lat, lon: c.lng } : { lat: 25.0358, lon: 121.442 }
-    },
-    focusReport: (r) => {
-      if (!r) return
-      switchTab('map')
-      setTimeout(() => mapPage.map?.flyTo([r.lat, r.lon], 18), 50)
-    },
-  })
-)
+
 stacks.settings.setRoot(
   settingsView({
     openAdmin: () => stacks.settings.push(adminView()),
@@ -143,9 +114,6 @@ $('.tabbar').addEventListener('click', (e) => {
 // 導覽列返回按鈕
 app.addEventListener('click', (e) => {
   if (e.target.closest('[data-back]')) stacks[current].pop()
-})
-on((type) => {
-  if (type === 'reports') updateBadge()
 })
 
 current = null
@@ -189,17 +157,14 @@ function onboarding() {
         <div class="feature">${icon(
           'walk'
         )}<div><div class="t-headline">接近時語音提醒</div><div class="t-subhead c-2">語音＋提示音＋紅框，平板沒有 GPS 也能模擬行走</div></div></div>
-        <div class="feature">${icon(
-          'bubble'
-        )}<div><div class="t-headline">回報差點被撞</div><div class="t-subhead c-2">存進資料庫，其他人即時看到</div></div></div>
         <div class="list" style="text-align:left;margin-top:26px">
           <div class="cell"><span style="color:var(--blue)">${icon(
             'server'
-          )}</span><input type="url" class="ob-srv" placeholder="伺服器位址，例如 192.168.x.x:8000" autocapitalize="off" spellcheck="false" value="${esc(
+          )}</span><input type="url" class="ob-srv" placeholder="向管理者取得的完整連線位址" autocapitalize="off" spellcheck="false" value="${esc(
     getServer()
   )}"></div>
         </div>
-        <div class="t-footnote c-2 ob-msg" style="text-align:left;padding:8px 4px 0">在電腦執行 start_server.bat 後，畫面會顯示要輸入的網址</div>
+        <div class="t-footnote c-2 ob-msg" style="text-align:left;padding:8px 4px 0">請向提供此 App 的管理者取得連線位址，貼上完整內容後即可使用。App 不會預設連到任何私人伺服器。</div>
         <button class="btn btn-primary btn-block ob-go" style="margin-top:20px">開始使用</button>
         <button class="btn btn-block ob-skip" style="margin-top:6px;color:var(--blue);font-weight:500">稍後再設定</button>
         <div class="t-caption c-2" style="margin-top:22px">依官方歷史事故統計提醒注意，不保證路況安全</div>
@@ -217,7 +182,7 @@ function onboarding() {
       o.style.opacity = '0'
       setTimeout(() => o.remove(), 350)
       emit('server-changed')
-      startPolling()
+
       toast('已連上伺服器')
     } catch (e) {
       $('.ob-msg', o).innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`
@@ -233,5 +198,4 @@ initGuardian().catch(() => {
 })
 syncAlertPrefs() // 危險通知設定同步到原生服務
 if (!getServer()) onboarding()
-else startPolling()
 initWeather() // 伺服器變更時會自動重查
