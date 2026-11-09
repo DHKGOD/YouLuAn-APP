@@ -198,6 +198,8 @@ def report(hotspot_id: int) -> dict[str, Any]:
         "vehicles": vehicles,
         "ages": sorted(ages, key=lambda r: age_order.index(r["name"])),
         "recent_accidents": recent,
+        # 舊APK渲染報告仍會讀此欄位的length；固定空清單，不查詢或提供回報資料。
+        "user_reports": [],
         # AI 任務 2：測站實際雨量校正後的雨天標記（ai/rain_risk.py）；沒有資料時為 null，前端退回天候欄判斷
         "rain_risk": rain,
         "advice": build_advice([r["name"] for r in causes[:3]], [r["name"] for r in collisions[:2]],

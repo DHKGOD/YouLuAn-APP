@@ -116,7 +116,7 @@ def test_areas_for_custom_ranking(client):
 def test_report(client):
     hid = client.get("/api/hotspots/top", params={"limit": 1}).json()["hotspots"][0]["id"]
     rep = client.get(f"/api/hotspots/{hid}/report").json()
-    assert "user_reports" not in rep
+    assert rep["user_reports"] == []  # 舊APK仍會讀length，僅保留空清單相容。
     assert len(rep["hourly"]) == 24
     assert sum(rep["hourly"]) == rep["summary"]["accidents"]
     assert rep["advice"]["road_user"]
@@ -146,6 +146,44 @@ def test_user_reporting_is_removed(client):
     assert client.post('/api/reports', json={'lat': FJU[0], 'lon': FJU[1]}).status_code == 404
     paths = client.get('/openapi.json').json()['paths']
     assert '/api/reports' not in paths
+
+
+def test_legacy_android_report_reading_does_not_query_user_reports(client):
+    """使用者截圖的路口；空相容欄位不能恢復舊回報查詢。"""
+    from unittest.mock import patch
+    from contextlib import contextmanager
+
+    original_conn = db.conn
+    queries = []
+
+    class ObservedConnection:
+        def __init__(self, connection):
+            self.connection = connection
+
+        def execute(self, query, *args, **kwargs):
+            queries.append(str(query))
+            return self.connection.execute(query, *args, **kwargs)
+
+    @contextmanager
+    def observed_conn():
+        with original_conn() as connection:
+            yield ObservedConnection(connection)
+
+    # 找目前資料的同名路口，不把一次匯入產生的ID寫死。
+    with original_conn() as connection:
+        row = connection.execute("SELECT id FROM hotspot WHERE name = %s LIMIT 1",
+                                 ('新北大道3段 / 五工路',)).fetchone()
+    if row is None:
+        pytest.skip('此資料庫沒有使用者截圖的路口')
+    with patch.object(db, 'conn', observed_conn):
+        response = client.get(f"/api/hotspots/{row['id']}/report")
+    assert response.status_code == 200
+    report = response.json()
+    assert report['hotspot']['name'] == '新北大道3段 / 五工路'
+    assert isinstance(report['user_reports'], list) and len(report['user_reports']) == 0
+    assert len(report['hourly']) == 24
+    assert sum(report['hourly']) == report['summary']['accidents']
+    assert not any('user_report' in query.lower() for query in queries)
 
 
 def test_share_route_roundtrip(client):
