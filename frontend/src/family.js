@@ -9,10 +9,11 @@ export function savedRoutes() {
   }
 }
 export function saveRoute(route, name) {
-  const list = savedRoutes().filter((r) => r.name !== name)
-  list.unshift({ ...route, name, demo: false, savedAt: Date.now() })
+  // 同名路線用新的取代，並放在清單最前面。
+  const routes = savedRoutes().filter((savedRoute) => savedRoute.name !== name)
+  routes.unshift({ ...route, name, demo: false, savedAt: Date.now() })
   try {
-    localStorage.setItem('savedRoutes', JSON.stringify(list.slice(0, 20)))
+    localStorage.setItem('savedRoutes', JSON.stringify(routes.slice(0, 20)))
   } catch {
     /* 空間不足 */
   }
@@ -20,10 +21,8 @@ export function saveRoute(route, name) {
 }
 export function deleteRoute(name) {
   try {
-    localStorage.setItem(
-      'savedRoutes',
-      JSON.stringify(savedRoutes().filter((r) => r.name !== name))
-    )
+    const remainingRoutes = savedRoutes().filter((savedRoute) => savedRoute.name !== name)
+    localStorage.setItem('savedRoutes', JSON.stringify(remainingRoutes))
   } catch {
     /* ignore */
   }
@@ -37,14 +36,14 @@ export function elderMode() {
     return false
   }
 }
-export function setElderMode(on) {
+export function setElderMode(enabled) {
   try {
-    localStorage.setItem('elderMode', on ? '1' : '0')
+    localStorage.setItem('elderMode', enabled ? '1' : '0')
   } catch {
     /* ignore */
   }
   applyElderMode()
-  emit('elder', on)
+  emit('elder', enabled)
 }
 export function applyElderMode() {
   document.documentElement.classList.toggle('elder', elderMode())

@@ -54,19 +54,27 @@ def _valid_points(points: list[tuple[float, float]]) -> None:
 @router.post("", response_model=RouteOut, status_code=201, summary="分享路線（產生代碼）")
 def share(route: RouteIn) -> dict[str, Any]:
     _valid_points(route.points)
-    with db.conn() as c:
+    with db.conn() as connection:
         for _ in range(8):  # 代碼碰撞時重試
-            code = "".join(secrets.choice(ALPHABET) for _ in range(6))
+            code = ""
+            for _ in range(6):
+                code += secrets.choice(ALPHABET)
             try:
-                with c.transaction():
-                    row = c.execute("""
+                with connection.transaction():
+                    route_data = route.model_dump()
+                    route_data["code"] = code
+                    points = []
+                    for point in route.points:
+                        points.append(list(point))
+                    route_data["points"] = Jsonb(points)
+                    shared_route = connection.execute("""
                         INSERT INTO shared_route (code, name, mode, start_name, end_name, points, distance_m, duration_s, for_elder)
                         VALUES (%(code)s, %(name)s, %(mode)s, %(start_name)s, %(end_name)s, %(points)s, %(distance_m)s,
                                 %(duration_s)s, %(for_elder)s)
                         RETURNING code, name, mode, start_name, end_name, points, distance_m, duration_s, for_elder,
                                   created_at, expires_at""",
-                        {**route.model_dump(), "code": code, "points": Jsonb([list(p) for p in route.points])}).fetchone()
-                return row
+                        route_data).fetchone()
+                return shared_route
             except errors.UniqueViolation:
                 continue
     raise HTTPException(500, "無法產生代碼，請再試一次")
@@ -79,12 +87,12 @@ _lock = threading.Lock()
 
 
 def _check_throttle(ip: str) -> None:
-    """防止暴力猜代碼（Codex 審查）：猜錯太多次就暫時拒絕。"""
+    """猜錯太多次就暫時拒絕，避免逐一嘗試所有分享代碼。"""
     now = time.monotonic()
     with _lock:
-        recent = [t for t in _fails[ip] if now - t < WINDOW]
-        _fails[ip] = recent
-        if len(recent) >= MAX_FAILS:
+        recent_attempts = [attempt_time for attempt_time in _fails[ip] if now - attempt_time < WINDOW]
+        _fails[ip] = recent_attempts
+        if len(recent_attempts) >= MAX_FAILS:
             raise HTTPException(429, "嘗試太多次，請 10 分鐘後再試")
 
 
@@ -95,19 +103,19 @@ def _record_fail(ip: str) -> None:
 
 @router.get("/{code}", response_model=RouteOut, summary="用代碼下載家人分享的路線")
 def fetch(code: str, request: Request) -> dict[str, Any]:
-    ip = request.client.host if request.client else "unknown"
-    _check_throttle(ip)
+    client_ip = request.client.host if request.client else "unknown"
+    _check_throttle(client_ip)
     code = code.strip().upper()
     if len(code) != 6 or set(code) - set(ALPHABET):
-        _record_fail(ip)
+        _record_fail(client_ip)
         raise HTTPException(404, "找不到這個代碼（可能打錯或已超過 30 天）")
-    with db.conn() as c:
-        row = c.execute("""
+    with db.conn() as connection:
+        shared_route = connection.execute("""
             UPDATE shared_route SET fetch_count = fetch_count + 1
             WHERE code = %(code)s AND expires_at > now()
             RETURNING code, name, mode, start_name, end_name, points, distance_m, duration_s, for_elder,
                       created_at, expires_at""", {"code": code}).fetchone()
-    if not row:
-        _record_fail(ip)
+    if not shared_route:
+        _record_fail(client_ip)
         raise HTTPException(404, "找不到這個代碼（可能打錯或已超過 30 天）")
-    return row
+    return shared_route

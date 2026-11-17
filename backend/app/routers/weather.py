@@ -45,13 +45,13 @@ _cache: dict[Any, tuple[float, Any]] = {}
 def _cached(key: Any, ttl: float, fn):
     now = time.monotonic()
     with _lock:
-        hit = _cache.get(key)
-        if hit and now - hit[0] < ttl:
-            return hit[1]
-    val = fn()
+        cached_value = _cache.get(key)
+        if cached_value and now - cached_value[0] < ttl:
+            return cached_value[1]
+    result = fn()
     with _lock:
-        _cache[key] = (now, val)
-    return val
+        _cache[key] = (now, result)
+    return result
 
 
 def _get(dataset: str, **params: str) -> dict[str, Any]:
@@ -69,82 +69,128 @@ def _get(dataset: str, **params: str) -> dict[str, Any]:
 def _num(v: Any) -> float | None:
     """氣象署以負值（如 -998、-999）表示無資料或儀器異常。"""
     try:
-        f = float(v)
+        number = float(v)
     except (TypeError, ValueError):
         return None
-    return f if f >= 0 and math.isfinite(f) else None
+    if number >= 0 and math.isfinite(number):
+        return number
+    return None
 
 
 def _stations() -> list[dict[str, Any]]:
     def load() -> list[dict[str, Any]]:
-        recs = _get("O-A0002-001", RainfallElement="Past1hr,Past3hr",
+        records = _get("O-A0002-001", RainfallElement="Past1hr,Past3hr",
                     GeoInfo="Coordinates,CountyName,TownName")
-        out = []
-        for s in recs.get("Station", []):
-            geo = s.get("GeoInfo", {})
-            wgs = next((c for c in geo.get("Coordinates", []) if c.get("CoordinateName") == "WGS84"), None)
-            if not wgs:
+        stations = []
+        for station in records.get("Station", []):
+            geography = station.get("GeoInfo", {})
+            station_coordinates = None
+            for coordinate in geography.get("Coordinates", []):
+                if coordinate.get("CoordinateName") == "WGS84":
+                    station_coordinates = coordinate
+                    break
+            if not station_coordinates:
                 continue
-            rain = s.get("RainfallElement", {})
-            out.append({"name": s.get("StationName"), "id": s.get("StationId"),
-                        "lat": float(wgs["StationLatitude"]), "lon": float(wgs["StationLongitude"]),
-                        "county": geo.get("CountyName"), "town": geo.get("TownName"),
-                        "obs_time": (s.get("ObsTime") or {}).get("DateTime"),
-                        "rain_1h": _num((rain.get("Past1hr") or {}).get("Precipitation")),
-                        "rain_3h": _num((rain.get("Past3hr") or {}).get("Precipitation"))})
-        return out
+            rainfall = station.get("RainfallElement", {})
+            stations.append({
+                "name": station.get("StationName"),
+                "id": station.get("StationId"),
+                "lat": float(station_coordinates["StationLatitude"]),
+                "lon": float(station_coordinates["StationLongitude"]),
+                "county": geography.get("CountyName"),
+                "town": geography.get("TownName"),
+                "obs_time": (station.get("ObsTime") or {}).get("DateTime"),
+                "rain_1h": _num((rainfall.get("Past1hr") or {}).get("Precipitation")),
+                "rain_3h": _num((rainfall.get("Past3hr") or {}).get("Precipitation")),
+            })
+        return stations
     return _cached("stations", OBS_TTL, load)
 
 
 def _km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
-    return 6371.0 * 2 * math.asin(math.sqrt(a))
+    latitude1, latitude2 = math.radians(lat1), math.radians(lat2)
+    distance_factor = (
+        math.sin((latitude2 - latitude1) / 2) ** 2
+        + math.cos(latitude1) * math.cos(latitude2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    )
+    return 6371.0 * 2 * math.asin(math.sqrt(distance_factor))
 
 
 def _forecast(county: str, town: str) -> dict[str, Any] | None:
-    ds = FORECAST_DATASET.get(county)
-    if not ds:
+    dataset_suffix = FORECAST_DATASET.get(county)
+    if not dataset_suffix:
         return None
 
     def load() -> dict[str, list[dict[str, Any]]]:
-        recs = _get(f"F-D0047-{ds}", LocationName=town, ElementName="3小時降雨機率,天氣現象,溫度")
-        locs = (recs.get("Locations") or [{}])[0].get("Location") or []
-        if not locs:
+        records = _get(f"F-D0047-{dataset_suffix}", LocationName=town, ElementName="3小時降雨機率,天氣現象,溫度")
+        locations = (records.get("Locations") or [{}])[0].get("Location") or []
+        if not locations:
             return {"periods": [], "temps": []}
-        el = {e["ElementName"]: e["Time"] for e in locs[0].get("WeatherElement", [])}
-        wx = {t["StartTime"]: t["ElementValue"][0].get("Weather") for t in el.get("天氣現象", [])}
-        periods = [{"start": t["StartTime"], "end": t["EndTime"],
-                    "pop": _num(t["ElementValue"][0].get("ProbabilityOfPrecipitation")),
-                    "weather": wx.get(t["StartTime"])} for t in el.get("3小時降雨機率", [])]
-        temps = [{"time": t.get("DataTime"), "value": _num(t["ElementValue"][0].get("Temperature"))}
-                 for t in el.get("溫度", []) if t.get("DataTime")]
-        return {"periods": periods, "temps": temps}
+        elements_by_name = {}
+        for element in locations[0].get("WeatherElement", []):
+            elements_by_name[element["ElementName"]] = element["Time"]
 
-    data = _cached(("fc", ds, town), FC_TTL, load)
+        weather_by_start = {}
+        for entry in elements_by_name.get("天氣現象", []):
+            weather_by_start[entry["StartTime"]] = entry["ElementValue"][0].get("Weather")
+
+        # 降雨機率和天氣文字用起始時間配對。
+        periods = []
+        for entry in elements_by_name.get("3小時降雨機率", []):
+            probability = entry["ElementValue"][0].get("ProbabilityOfPrecipitation")
+            periods.append({
+                "start": entry["StartTime"],
+                "end": entry["EndTime"],
+                "pop": _num(probability),
+                "weather": weather_by_start.get(entry["StartTime"]),
+            })
+
+        temperatures = []
+        for entry in elements_by_name.get("溫度", []):
+            if entry.get("DataTime"):
+                temperatures.append({
+                    "time": entry.get("DataTime"),
+                    "value": _num(entry["ElementValue"][0].get("Temperature")),
+                })
+        return {"periods": periods, "temps": temperatures}
+
+    forecast_data = _cached(("fc", dataset_suffix, town), FC_TTL, load)
     now = datetime.now(TW)
-    out: dict[str, Any] | None = None
-    periods = data["periods"]
-    for i, p in enumerate(periods):
-        if _ts(p["end"]) > now:
-            nxt = periods[i + 1] if i + 1 < len(periods) else None
-            out = {**p, "next": nxt}
+    forecast_result: dict[str, Any] | None = None
+    periods = forecast_data["periods"]
+    for period_index, period in enumerate(periods):
+        if _ts(period["end"]) > now:
+            next_period = None
+            if period_index + 1 < len(periods):
+                next_period = periods[period_index + 1]
+            forecast_result = {**period, "next": next_period}
             break
     # 氣溫：取時間最接近現在的預報值（每 3 小時一筆）
-    temps = [t for t in data["temps"] if t["value"] is not None]
-    if temps:
-        best = min(temps, key=lambda t: abs((_ts(t["time"]) - now).total_seconds()))
-        out = {**(out or {}), "temperature": best["value"]}
-    return out
+    temperatures = []
+    for entry in forecast_data["temps"]:
+        if entry["value"] is not None:
+            temperatures.append(entry)
+    if temperatures:
+        closest_temperature = temperatures[0]
+        closest_seconds = abs((_ts(closest_temperature["time"]) - now).total_seconds())
+        for entry in temperatures[1:]:
+            seconds = abs((_ts(entry["time"]) - now).total_seconds())
+            if seconds < closest_seconds:
+                closest_temperature = entry
+                closest_seconds = seconds
+        forecast_result = {**(forecast_result or {}), "temperature": closest_temperature["value"]}
+    return forecast_result
 
 
 TW = timezone(timedelta(hours=8))
 
 
 def _ts(s: str) -> datetime:
-    """氣象署時間字串轉成有時區的時間；沒有時區（例如 2026-10-20 06:00:00）時視為台灣時間（Codex 審查）。"""
-    d = datetime.fromisoformat(s.replace(" ", "T"))
-    return d if d.tzinfo else d.replace(tzinfo=TW)
+    """轉換氣象署時間；沒有附時區的字串視為台灣時間。"""
+    parsed_time = datetime.fromisoformat(s.replace(" ", "T"))
+    if parsed_time.tzinfo:
+        return parsed_time
+    return parsed_time.replace(tzinfo=TW)
 
 
 @router.get("/now", summary="目前位置的即時雨量與降雨機率（建議晴天／雨天模式）")
@@ -153,27 +199,43 @@ def weather_now(lat: float = Query(..., ge=21.5, le=26.5), lon: float = Query(..
         return {"available": False, "reason": "伺服器未設定氣象署授權碼"}
     try:
         stations = _stations()
-        near = min(stations, key=lambda s: _km(lat, lon, s["lat"], s["lon"]), default=None)
-        if near is None:
+        closest_station = min(stations, key=lambda s: _km(lat, lon, s["lat"], s["lon"]), default=None)
+        if closest_station is None:
             raise HTTPException(502, "氣象署雨量資料暫時無法取得")
-        dist = _km(lat, lon, near["lat"], near["lon"])
-        fc = _forecast(near["county"], near["town"])
+        distance_km = _km(lat, lon, closest_station["lat"], closest_station["lon"])
+        forecast = _forecast(closest_station["county"], closest_station["town"])
     except httpx.HTTPError as e:
         raise HTTPException(502, f"氣象署服務暫時無法使用：{e.__class__.__name__}") from e
 
-    rain_1h = near["rain_1h"] if dist <= MAX_STATION_KM else None
-    raining = rain_1h is not None and rain_1h >= RAIN_MM
-    pop = fc.get("pop") if fc else None
+    hourly_rain = closest_station["rain_1h"] if distance_km <= MAX_STATION_KM else None
+    raining = hourly_rain is not None and hourly_rain >= RAIN_MM
+    rain_probability = forecast.get("pop") if forecast else None
     if raining:
-        mode, reason = "rain", f"附近測站過去 1 小時雨量 {rain_1h:g} mm"
-    elif pop is not None and pop >= POP_RAIN:
-        mode, reason = "rain", f"目前時段降雨機率 {pop:g}%"
+        weather_mode, reason = "rain", f"附近測站過去 1 小時雨量 {hourly_rain:g} mm"
+    elif rain_probability is not None and rain_probability >= POP_RAIN:
+        weather_mode, reason = "rain", f"目前時段降雨機率 {rain_probability:g}%"
     else:
-        mode, reason = "clear", "附近沒有下雨" + (f"，降雨機率 {pop:g}%" if pop is not None else "")
+        weather_mode = "clear"
+        reason = "附近沒有下雨"
+        if rain_probability is not None:
+            reason += f"，降雨機率 {rain_probability:g}%"
     return {
-        "available": True, "suggested_mode": mode, "reason": reason, "raining": raining,
-        "rain_1h_mm": rain_1h, "pop_percent": pop, "temperature": fc.get("temperature") if fc else None,
-        "station": {"name": near["name"], "id": near["id"], "county": near["county"], "town": near["town"],
-                    "distance_km": round(dist, 1), "obs_time": near["obs_time"]},
-        "forecast": fc, "thresholds": {"rain_mm": RAIN_MM, "pop_percent": POP_RAIN}, "source": SOURCE,
+        "available": True,
+        "suggested_mode": weather_mode,
+        "reason": reason,
+        "raining": raining,
+        "rain_1h_mm": hourly_rain,
+        "pop_percent": rain_probability,
+        "temperature": forecast.get("temperature") if forecast else None,
+        "station": {
+            "name": closest_station["name"],
+            "id": closest_station["id"],
+            "county": closest_station["county"],
+            "town": closest_station["town"],
+            "distance_km": round(distance_km, 1),
+            "obs_time": closest_station["obs_time"],
+        },
+        "forecast": forecast,
+        "thresholds": {"rain_mm": RAIN_MM, "pop_percent": POP_RAIN},
+        "source": SOURCE,
     }

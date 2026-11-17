@@ -1,18 +1,21 @@
 // 伺服器位址與 API 呼叫。位址存在本機（換到雲端不用重新打包 APK，只要在設定頁改位址）。
 import { Capacitor } from '@capacitor/core'
 
-const KEY = 'serverUrl'
+const SERVER_URL_KEY = 'serverUrl'
 
 export const isNative = () => Capacitor.isNativePlatform()
-export const isIOSWebsite = () => !isNative() && (
-  /iPhone|iPad|iPod/.test(globalThis.navigator?.userAgent || '') ||
-  (globalThis.navigator?.platform === 'MacIntel' && globalThis.navigator?.maxTouchPoints > 1)
-)
+export function isIOSWebsite() {
+  if (isNative()) return false
+  const browser = globalThis.navigator
+  const isIphoneOrIpad = /iPhone|iPad|iPod/.test(browser?.userAgent || '')
+  const isDesktopIpad = browser?.platform === 'MacIntel' && browser?.maxTouchPoints > 1
+  return isIphoneOrIpad || isDesktopIpad
+}
 
 export function websiteApiPath() {
   if (isNative()) return ''
-  const path = globalThis.document?.querySelector('meta[name="youluan-api-path"]')?.content || ''
-  return /^\/[A-Za-z0-9_-]{40,128}$/.test(path) ? path : ''
+  const apiPath = globalThis.document?.querySelector('meta[name="youluan-api-path"]')?.content || ''
+  return /^\/[A-Za-z0-9_-]{40,128}$/.test(apiPath) ? apiPath : ''
 }
 
 /** 網頁版若由後端提供（http://IP:8000/），預設連同一個來源；App 版需要在設定頁輸入。 */
@@ -29,7 +32,7 @@ export function defaultServer() {
 export function getServer() {
   if (websiteApiPath()) return defaultServer()
   try {
-    return localStorage.getItem(KEY) || defaultServer()
+    return localStorage.getItem(SERVER_URL_KEY) || defaultServer()
   } catch {
     return defaultServer()
   }
@@ -38,7 +41,7 @@ export function getServer() {
 export function setServer(url) {
   const clean = normalize(url)
   try {
-    localStorage.setItem(KEY, clean)
+    localStorage.setItem(SERVER_URL_KEY, clean)
   } catch {
     /* 無痕模式等情況 */
   }
@@ -66,12 +69,12 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { method = 'GET', body, timeout = 12000, server } = {}) {
-  const base = server ?? getServer()
-  if (!base) throw new ApiError('尚未設定伺服器位址', 0)
+  const baseUrl = server ?? getServer()
+  if (!baseUrl) throw new ApiError('尚未設定伺服器位址', 0)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeout)
   try {
-    const response = await fetch(base + path, {
+    const response = await fetch(baseUrl + path, {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,

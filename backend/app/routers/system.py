@@ -21,17 +21,29 @@ TABLES = [
 
 @router.get("/health", summary="健康檢查")
 def health() -> dict[str, Any]:
-    t0 = time.perf_counter()
+    started_at = time.perf_counter()
     try:
-        with db.conn() as c:
-            c.execute("SELECT 1").fetchone()
-            ver = c.execute("SHOW server_version").fetchone()["server_version"]
-        ok, err = True, None
+        with db.conn() as connection:
+            connection.execute("SELECT 1").fetchone()
+            database_version = connection.execute("SHOW server_version").fetchone()["server_version"]
+        database_ok = True
+        error_message = None
     except Exception as e:  # noqa: BLE001 — 健康檢查要回報任何錯誤
-        ok, err, ver = False, str(e), None
-    return {"status": "ok" if ok else "error", "database": {"ok": ok, "version": ver, "error": err,
-            "postgis": db.postgis, "latency_ms": round((time.perf_counter() - t0) * 1000, 1)},
-            "server_time": datetime.now().isoformat(timespec="seconds"), "api_version": "0.1.0"}
+        database_ok = False
+        error_message = str(e)
+        database_version = None
+    return {
+        "status": "ok" if database_ok else "error",
+        "database": {
+            "ok": database_ok,
+            "version": database_version,
+            "error": error_message,
+            "postgis": db.postgis,
+            "latency_ms": round((time.perf_counter() - started_at) * 1000, 1),
+        },
+        "server_time": datetime.now().isoformat(timespec="seconds"),
+        "api_version": "0.1.0",
+    }
 
 
 @router.get("/meta", summary="App 顯示用的說明文字")
@@ -41,12 +53,12 @@ def meta() -> dict[str, Any]:
 
 @router.get("/admin/stats", summary="後台：各資料表筆數與關係")
 def stats() -> dict[str, Any]:
-    with db.conn() as c:
-        counts = []
-        for t, label in TABLES:
-            n = c.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"]
-            counts.append({"table": t, "label": label, "rows": n})
-        rels = c.execute("""
+    with db.conn() as connection:
+        table_counts = []
+        for table_name, label in TABLES:
+            row_count = connection.execute(f"SELECT count(*) AS n FROM {table_name}").fetchone()["n"]
+            table_counts.append({"table": table_name, "label": label, "rows": row_count})
+        relations = connection.execute("""
             SELECT tc.table_name AS child, kcu.column_name AS column, ccu.table_name AS parent
             FROM information_schema.table_constraints tc
             JOIN information_schema.key_column_usage kcu
@@ -56,8 +68,12 @@ def stats() -> dict[str, Any]:
             WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
               AND tc.table_name <> 'user_report' AND ccu.table_name <> 'user_report'
             ORDER BY child, kcu.column_name""").fetchall()
-        months = c.execute("""SELECT year, month, count(*) AS n FROM accident GROUP BY year, month
+        monthly_counts = connection.execute("""SELECT year, month, count(*) AS n FROM accident GROUP BY year, month
                               ORDER BY year, month""").fetchall()
-    return {"tables": counts, "relations": rels,
-            "monthly": [{"label": f"{m['year'] - 1911}/{m['month']:02d}", "n": m["n"]} for m in months],
+    monthly_report = []
+    for month in monthly_counts:
+        label = f"{month['year'] - 1911}/{month['month']:02d}"
+        monthly_report.append({"label": label, "n": month["n"]})
+    return {"tables": table_counts, "relations": relations,
+            "monthly": monthly_report,
             "postgis": db.postgis, "data_source": DATA_SOURCE}

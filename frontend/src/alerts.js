@@ -3,8 +3,8 @@
 import { registerPlugin } from '@capacitor/core'
 import { isNative } from './api.js'
 
-const Native = registerPlugin('Guardian')
-const KEY = 'alertPrefs'
+const guardianPlugin = registerPlugin('Guardian')
+const ALERT_PREFS_KEY = 'alertPrefs'
 
 export const ALERT_STYLES = [
   {
@@ -46,21 +46,21 @@ const DEFAULTS = {
 
 export function alertPrefs() {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') }
+    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(ALERT_PREFS_KEY) || '{}') }
   } catch {
     return { ...DEFAULTS }
   }
 }
 
 export async function setAlertPrefs(patch) {
-  const p = { ...alertPrefs(), ...patch }
+  const preferences = { ...alertPrefs(), ...patch }
   try {
-    localStorage.setItem(KEY, JSON.stringify(p))
+    localStorage.setItem(ALERT_PREFS_KEY, JSON.stringify(preferences))
   } catch {
     /* 不影響使用 */
   }
   await syncAlertPrefs()
-  return p
+  return preferences
 }
 
 /** 把偏好送到原生端（App 啟動時也呼叫一次）。 */
@@ -68,9 +68,9 @@ export async function syncAlertPrefs() {
   // 一次性遷移：舊版預設「靈動島」改成新預設「小球旁邊」（之後使用者自己選的會保留）
   try {
     if (!localStorage.getItem('alertStyleV2')) {
-      const saved = JSON.parse(localStorage.getItem(KEY) || 'null')
+      const saved = JSON.parse(localStorage.getItem(ALERT_PREFS_KEY) || 'null')
       if (saved?.style === 'island')
-        localStorage.setItem(KEY, JSON.stringify({ ...saved, style: 'bubble' }))
+        localStorage.setItem(ALERT_PREFS_KEY, JSON.stringify({ ...saved, style: 'bubble' }))
       localStorage.setItem('alertStyleV2', '1')
     }
   } catch {
@@ -78,7 +78,7 @@ export async function syncAlertPrefs() {
   }
   if (!isNative()) return
   try {
-    await Native.setAlertPrefs(alertPrefs())
+    await guardianPlugin.setAlertPrefs(alertPrefs())
   } catch {
     /* 舊版 App 沒有這個方法 */
   }
@@ -86,5 +86,8 @@ export async function syncAlertPrefs() {
 
 const RANK = { low: 0, medium: 1, high: 2 }
 /** 這個等級的路口要不要提醒。 */
-export const levelPasses = (level, prefs = alertPrefs()) =>
-  (RANK[level] ?? 0) >= (RANK[prefs.level] ?? 0)
+export const levelPasses = (level, prefs = alertPrefs()) => {
+  const roadLevel = RANK[level] ?? 0
+  const minimumLevel = RANK[prefs.level] ?? 0
+  return roadLevel >= minimumLevel
+}

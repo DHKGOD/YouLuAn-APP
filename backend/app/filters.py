@@ -31,14 +31,17 @@ WEATHER_LABEL = {Weather.all: "全部天候", Weather.clear: "晴／陰天", Wea
 
 def accident_filter_sql(weather: Weather, period: Period, alias: str = "a") -> str:
     """回傳附加在 WHERE 後面的條件（以 AND 開頭；無條件時回傳空字串）。只用常數，沒有使用者輸入。"""
-    parts: list[str] = []
+    conditions: list[str] = []
     if weather == Weather.clear:
-        parts.append(f"{alias}.weather IN ('晴', '陰')")
+        conditions.append(f"{alias}.weather IN ('晴', '陰')")
     elif weather == Weather.rain:
-        parts.append(f"{alias}.weather = '雨'")
+        conditions.append(f"{alias}.weather = '雨'")
     if period == Period.night:
-        parts.append(f"({alias}.hour >= 20 OR {alias}.hour < 6)")
+        conditions.append(f"({alias}.hour >= 20 OR {alias}.hour < 6)")
     elif period in PERIOD_HOURS:
         start_hour, end_hour = PERIOD_HOURS[period]
-        parts.append(f"{alias}.hour BETWEEN {start_hour} AND {end_hour}")
-    return "".join(f" AND {p}" for p in parts)
+        conditions.append(f"{alias}.hour BETWEEN {start_hour} AND {end_hour}")
+    sql = ""
+    for condition in conditions:
+        sql += f" AND {condition}"
+    return sql

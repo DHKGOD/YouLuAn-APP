@@ -25,15 +25,15 @@ async function position() {
     // 只在已授權時用定位，不在開 App 時跳出權限詢問
     if ((await Geolocation.checkPermissions()).location !== 'granted')
       throw new Error('no permission')
-    const p = await Geolocation.getCurrentPosition({
+    const positionResult = await Geolocation.getCurrentPosition({
       enableHighAccuracy: false,
       timeout: 5000,
       maximumAge: 5 * 60 * 1000,
     })
-    return { lat: p.coords.latitude, lon: p.coords.longitude, from: 'gps' }
+    return { lat: positionResult.coords.latitude, lon: positionResult.coords.longitude, from: 'gps' }
   } catch {
-    const s = routeOrDemo().start // 沒有定位（平板、網頁）→ 用路線起點（探索模式用 Demo 起點）
-    return { lat: s.lat, lon: s.lon, from: 'route' }
+    const start = routeOrDemo().start // 沒有定位（平板、網頁）→ 用路線起點（探索模式用 Demo 起點）
+    return { lat: start.lat, lon: start.lon, from: 'route' }
   }
 }
 
@@ -41,27 +41,28 @@ async function position() {
 let inflight = null
 let wantAnnounce = false
 export function refreshLive({ announce = false } = {}) {
-  // 已有請求在跑（例如開 App 時的那一次）：共用同一個請求，完成時再依最新的自動模式套用，
-  // 不要直接回傳舊資料（Codex 審查：否則剛選「自動」會被誤判為失敗而關掉）
+  // 同時有多處查天氣時，共用尚未完成的請求。
   if (announce) wantAnnounce = true
-  inflight ??= doRefresh().finally(() => {
-    inflight = null
-    wantAnnounce = false
-  })
+  if (inflight === null) {
+    inflight = doRefresh().finally(() => {
+      inflight = null
+      wantAnnounce = false
+    })
+  }
   return inflight
 }
 
 async function doRefresh() {
   live.loading = true
   try {
-    const pos = await position()
-    const d = await api(`/api/weather/now?lat=${pos.lat.toFixed(4)}&lon=${pos.lon.toFixed(4)}`, {
+    const location = await position()
+    const weatherData = await api(`/api/weather/now?lat=${location.lat.toFixed(4)}&lon=${location.lon.toFixed(4)}`, {
       timeout: 25000,
     })
-    live.available = !!d.available
-    live.data = d.available ? { ...d, from: pos.from } : null
+    live.available = !!weatherData.available
+    live.data = weatherData.available ? { ...weatherData, from: location.from } : null
     live.at = Date.now()
-    if (!d.available && state.weatherAuto) setAuto(false, { silent: true })
+    if (!weatherData.available && state.weatherAuto) setAuto(false, { silent: true })
     else if (state.weatherAuto) apply(wantAnnounce)
     emit('live-weather', live)
     return live.data
@@ -74,14 +75,14 @@ async function doRefresh() {
 }
 
 function apply(announce) {
-  const d = live.data
-  if (!d) return
-  const prev = state.weather
-  if (d.suggested_mode !== prev) setMode({ weather: d.suggested_mode })
-  if (d.suggested_mode === 'rain' && (prev !== 'rain' || announce)) {
-    toast(`${d.reason}，已切換雨天模式`, { icon: 'rain', color: 'var(--indigo)', ms: 4200 })
+  const weatherData = live.data
+  if (!weatherData) return
+  const previousWeather = state.weather
+  if (weatherData.suggested_mode !== previousWeather) setMode({ weather: weatherData.suggested_mode })
+  if (weatherData.suggested_mode === 'rain' && (previousWeather !== 'rain' || announce)) {
+    toast(`${weatherData.reason}，已切換雨天模式`, { icon: 'rain', color: 'var(--indigo)', ms: 4200 })
   } else if (announce) {
-    toast(`${d.station.town}目前${d.forecast?.weather || '沒有下雨'}，顯示晴天時的危險路口`, {
+    toast(`${weatherData.station.town}目前${weatherData.forecast?.weather || '沒有下雨'}，顯示晴天時的危險路口`, {
       icon: 'sun',
       color: 'var(--orange)',
       ms: 3600,
@@ -89,60 +90,73 @@ function apply(announce) {
   }
 }
 
-function setAuto(on, { silent = false } = {}) {
-  state.weatherAuto = on
+function setAuto(enabled, { silent = false } = {}) {
+  state.weatherAuto = enabled
   try {
-    localStorage.setItem(KEY, on ? '1' : '0')
+    localStorage.setItem(KEY, enabled ? '1' : '0')
   } catch {
     /* 不影響使用 */
   }
   clearInterval(timer)
-  timer = on ? setInterval(() => refreshLive(), REFRESH_MS) : null
-  if (!on && !silent) emit('mode', {})
+  if (enabled) {
+    timer = setInterval(() => refreshLive(), REFRESH_MS)
+  } else {
+    timer = null
+  }
+  if (!enabled && !silent) emit('mode', {})
 }
 
 /** 天候膠囊的外觀（地圖頁、排行頁共用）。 */
 export function renderWeatherChip(chip) {
-  const w = state.weather
-  const label = w === 'rain' ? '雨天' : w === 'clear' ? '晴天' : '全部天候'
-  chip.className = `chip${w !== 'all' ? ' on' : ''}${w === 'rain' ? ' rain' : ''}`
-  chip.innerHTML = `${icon(w === 'rain' ? 'rain' : state.weatherAuto ? 'sparkles' : 'sun')}${
+  const weather = state.weather
+  let label = '全部天候'
+  if (weather === 'rain') label = '雨天'
+  else if (weather === 'clear') label = '晴天'
+
+  let iconName = 'sun'
+  if (weather === 'rain') iconName = 'rain'
+  else if (state.weatherAuto) iconName = 'sparkles'
+  chip.className = `chip${weather !== 'all' ? ' on' : ''}${weather === 'rain' ? ' rain' : ''}`
+  chip.innerHTML = `${icon(iconName)}${
     state.weatherAuto ? `自動・${label}` : label
   }<span class="caret">${icon('chevronDown')}</span>`
 }
 
 function liveLine() {
-  const d = live.data
-  if (!d) return ''
-  const pop = d.pop_percent != null ? `・降雨機率 ${d.pop_percent}%` : ''
-  const rain = d.rain_1h_mm != null ? `・1 小時雨量 ${d.rain_1h_mm} mm` : ''
-  return `${d.station.town}${d.forecast?.weather ? ' ' + d.forecast.weather : ''}${pop}${rain}`
+  const weatherData = live.data
+  if (!weatherData) return ''
+  const pop = weatherData.pop_percent != null ? `・降雨機率 ${weatherData.pop_percent}%` : ''
+  const rain = weatherData.rain_1h_mm != null ? `・1 小時雨量 ${weatherData.rain_1h_mm} mm` : ''
+  return `${weatherData.station.town}${weatherData.forecast?.weather ? ' ' + weatherData.forecast.weather : ''}${pop}${rain}`
 }
 
 /** 天候模式動作表（有氣象署資料時多一個「自動」選項）。 */
 export async function pickWeather() {
   if (live.available === null && !live.loading) refreshLive() // 背景先查，不擋住動作表
   const auto = live.available !== false
-  const options = [
-    ...(auto ? [{ value: 'auto', label: '自動（依氣象署即時天氣）', icon: 'sparkles' }] : []),
+  const options = []
+  if (auto) {
+    options.push({ value: 'auto', label: '自動（依氣象署即時天氣）', icon: 'sparkles' })
+  }
+  options.push(
     { value: 'all', label: '全部天候' },
     { value: 'clear', label: '晴天／陰天', icon: 'sun' },
     { value: 'rain', label: '雨天', icon: 'rain' },
-  ]
+  )
   const line = liveLine()
-  const v = await actionSheet({
+  const choice = await actionSheet({
     title: '天候模式',
     message: line ? `目前 ${line}` : '依事故發生時的天候篩選危險路口',
     value: state.weatherAuto ? 'auto' : state.weather,
     options,
   })
-  if (!v) return
-  if (v === 'auto') {
+  if (!choice) return
+  if (choice === 'auto') {
     if (state.weatherAuto) return
     setAuto(true)
     emit('mode', {})
-    const d = await refreshLive({ announce: true })
-    if (!d) {
+    const weatherData = await refreshLive({ announce: true })
+    if (!weatherData) {
       setAuto(false, { silent: true })
       emit('mode', {})
       toast('暫時取不到氣象署資料，請稍後再試', { icon: 'warning', color: 'var(--red)', ms: 3600 })
@@ -151,7 +165,7 @@ export async function pickWeather() {
   }
   const wasAuto = state.weatherAuto
   if (wasAuto) setAuto(false, { silent: true })
-  if (v !== state.weather) setMode({ weather: v })
+  if (choice !== state.weather) setMode({ weather: choice })
   else if (wasAuto) emit('mode', {})
 }
 

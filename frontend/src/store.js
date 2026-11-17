@@ -11,8 +11,8 @@ function loadRoute() {
   try {
     const raw = localStorage.getItem('route')
     if (raw === 'none') return null // 探索模式：沒有路線，自由瀏覽地圖上的危險路口
-    const r = JSON.parse(raw || 'null')
-    if (r?.points?.length >= 2 && r.start && r.end) return r
+    const savedRoute = JSON.parse(raw || 'null')
+    if (savedRoute?.points?.length >= 2 && savedRoute.start && savedRoute.end) return savedRoute
   } catch {
     /* 格式不對就用 Demo */
   }
@@ -24,21 +24,25 @@ export const routeOrDemo = () => state.route || DEMO
 
 export const state = { route: loadRoute(), weather: 'all', period: 'all' }
 
-export function on(fn) {
-  listeners.add(fn)
-  return () => listeners.delete(fn)
+export function on(listener) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
 }
 export function emit(type, payload) {
-  listeners.forEach((fn) => fn(type, payload))
+  listeners.forEach((listener) => listener(type, payload))
 }
 
 /** 設定路線；傳 null 進入探索模式（沒有目的地，看地圖範圍內的危險路口）。 */
 export function setRoute(route) {
   state.route = route
   try {
-    if (!route) localStorage.setItem('route', 'none')
-    else if (route.demo) localStorage.removeItem('route')
-    else localStorage.setItem('route', JSON.stringify(route))
+    if (!route) {
+      localStorage.setItem('route', 'none')
+    } else if (route.demo) {
+      localStorage.removeItem('route')
+    } else {
+      localStorage.setItem('route', JSON.stringify(route))
+    }
   } catch {
     /* 儲存失敗不影響使用 */
   }

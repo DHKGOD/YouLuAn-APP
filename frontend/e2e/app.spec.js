@@ -261,13 +261,17 @@ test('探索模式：清除路線後看地圖範圍內的危險路口，移動�
 test('地圖抽屜：切到其他分頁再回來不會卡在全開；點地圖上的路口抽屜收到最小、可開報告', async ({ page }) => {
   await openApp(page)
   const sheet = page.locator('.sheet')
+  // 清單載入時抽屜可能還在移動，等動畫結束後再記錄位置。
+  await sheet.evaluate(async (element) => {
+    element.getBoundingClientRect()
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
   const peekTop = (await sheet.boundingBox()).y
   // 在其他分頁時觸發抽屜重算（例如清除路線、旋轉），回來後位置要正常（實機曾卡在全開、清單也不能捲）
   await page.locator('[data-tab="rank"]').click()
   await page.evaluate(() => window.dispatchEvent(new Event('resize')))
   await page.locator('[data-tab="map"]').click()
-  await page.waitForTimeout(700)
-  expect(Math.abs((await sheet.boundingBox()).y - peekTop)).toBeLessThan(10)
+  await expect.poll(async () => Math.abs((await sheet.boundingBox()).y - peekTop)).toBeLessThan(10)
   // 點地圖上的路口 → 抽屜收到最小，報告按鈕看得到
   await page.locator('.leaflet-marker-icon .hs-marker.high').first().click({ force: true })
   await expect(sheet).toHaveClass(/mini/)

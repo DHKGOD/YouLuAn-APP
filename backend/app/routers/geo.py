@@ -47,17 +47,23 @@ def _search(q: str, lat: float | None, lon: float | None) -> tuple[dict[str, Any
     if lat is not None and lon is not None:  # 偏好目前位置附近的結果
         params["viewbox"] = f"{lon - 0.5},{lat + 0.5},{lon + 0.5},{lat - 0.5}"
     _throttle()
-    r = httpx.get(NOMINATIM, params=params, headers={"User-Agent": UA}, timeout=15)
-    r.raise_for_status()
-    out = []
-    for p in r.json():
-        a = p.get("address", {})
-        area = "".join(x for x in (a.get("city") or a.get("county") or a.get("state"),
-                                   a.get("suburb") or a.get("city_district") or a.get("town")) if x)
-        out.append({"name": p.get("name") or p["display_name"].split(",")[0], "area": area,
-                    "address": p["display_name"], "lat": float(p["lat"]), "lon": float(p["lon"]),
-                    "kind": p.get("type")})
-    return tuple(out)
+    response = httpx.get(NOMINATIM, params=params, headers={"User-Agent": UA}, timeout=15)
+    response.raise_for_status()
+    places = []
+    for place in response.json():
+        address = place.get("address", {})
+        city = address.get("city") or address.get("county") or address.get("state")
+        district = address.get("suburb") or address.get("city_district") or address.get("town")
+        area = "".join(part for part in (city, district) if part)
+        places.append({
+            "name": place.get("name") or place["display_name"].split(",")[0],
+            "area": area,
+            "address": place["display_name"],
+            "lat": float(place["lat"]),
+            "lon": float(place["lon"]),
+            "kind": place.get("type"),
+        })
+    return tuple(places)
 
 
 @router.get("/search", summary="搜尋地名（台灣）")
@@ -74,41 +80,46 @@ def _simplify(pts: list[tuple[float, float]], tol_m: float) -> list[tuple[float,
     if len(pts) < 3:
         return pts
     lat0 = math.radians(pts[0][0])
-    xy = [(math.radians(lo) * 6371000 * math.cos(lat0), math.radians(la) * 6371000) for la, lo in pts]
-    keep = [False] * len(pts)
-    keep[0] = keep[-1] = True
-    stack = [(0, len(pts) - 1)]
-    while stack:
-        s, e = stack.pop()
-        (x1, y1), (x2, y2) = xy[s], xy[e]
+    projected_points = []
+    for latitude, longitude in pts:
+        x = math.radians(longitude) * 6371000 * math.cos(lat0)
+        y = math.radians(latitude) * 6371000
+        projected_points.append((x, y))
+    keep_point = [False] * len(pts)
+    keep_point[0] = keep_point[-1] = True
+    segments_to_check = [(0, len(pts) - 1)]
+    while segments_to_check:
+        start_index, end_index = segments_to_check.pop()
+        (x1, y1), (x2, y2) = projected_points[start_index], projected_points[end_index]
         dx, dy = x2 - x1, y2 - y1
-        seg = math.hypot(dx, dy) or 1e-9
-        best, idx = 0.0, -1
-        for i in range(s + 1, e):
-            d = abs(dy * (xy[i][0] - x1) - dx * (xy[i][1] - y1)) / seg
-            if d > best:
-                best, idx = d, i
-        if best > tol_m and idx > 0:
-            keep[idx] = True
-            stack += [(s, idx), (idx, e)]
-    return [p for p, k in zip(pts, keep) if k]
+        segment_length = math.hypot(dx, dy) or 1e-9
+        furthest_distance, furthest_index = 0.0, -1
+        for point_index in range(start_index + 1, end_index):
+            point_x, point_y = projected_points[point_index]
+            distance = abs(dy * (point_x - x1) - dx * (point_y - y1)) / segment_length
+            if distance > furthest_distance:
+                furthest_distance, furthest_index = distance, point_index
+        if furthest_distance > tol_m and furthest_index > 0:
+            keep_point[furthest_index] = True
+            segments_to_check += [(start_index, furthest_index), (furthest_index, end_index)]
+    return [point for point, should_keep in zip(pts, keep_point) if should_keep]
 
 
 @lru_cache(maxsize=256)
 def _route(a: tuple[float, float], b: tuple[float, float], mode: str) -> dict[str, Any]:
     url = f"{OSRM[mode]}/{a[1]},{a[0]};{b[1]},{b[0]}"
-    r = httpx.get(url, params={"overview": "full", "geometries": "geojson"}, headers={"User-Agent": UA}, timeout=30)
-    r.raise_for_status()
-    data = r.json()
+    response = httpx.get(url, params={"overview": "full", "geometries": "geojson"}, headers={"User-Agent": UA}, timeout=30)
+    response.raise_for_status()
+    data = response.json()
     if data.get("code") != "Ok" or not data.get("routes"):
         raise HTTPException(404, "找不到路線")
-    route = data["routes"][0]
-    pts = [(round(lat, 6), round(lon, 6)) for lon, lat in route["geometry"]["coordinates"]]
-    tol = 2.0
-    while len(pts) > MAX_POINTS:
-        pts = _simplify(pts, tol)
-        tol *= 2
-    return {"distance_m": round(route["distance"]), "duration_s": round(route["duration"]), "points": pts}
+    route_data = data["routes"][0]
+    route_points = [(round(latitude, 6), round(longitude, 6)) for longitude, latitude in route_data["geometry"]["coordinates"]]
+    tolerance = 2.0
+    while len(route_points) > MAX_POINTS:
+        route_points = _simplify(route_points, tolerance)
+        tolerance *= 2
+    return {"distance_m": round(route_data["distance"]), "duration_s": round(route_data["duration"]), "points": route_points}
 
 
 @router.get("/route", summary="計算路線（步行／自行車／汽車）")
@@ -116,13 +127,13 @@ def route(from_: str = Query(..., alias="from", description="起點 lat,lon"),
           to: str = Query(..., description="終點 lat,lon"),
           mode: Literal["foot", "bike", "car"] = "foot") -> dict[str, Any]:
     try:
-        a = tuple(round(float(x), 5) for x in from_.split(","))
-        b = tuple(round(float(x), 5) for x in to.split(","))
-        assert len(a) == 2 and len(b) == 2
+        start_point = tuple(round(float(coordinate), 5) for coordinate in from_.split(","))
+        end_point = tuple(round(float(coordinate), 5) for coordinate in to.split(","))
+        assert len(start_point) == 2 and len(end_point) == 2
     except (ValueError, AssertionError) as e:
         raise HTTPException(422, "座標格式應為 lat,lon") from e
     try:
-        res = _route(a, b, mode)  # type: ignore[arg-type]
+        result = _route(start_point, end_point, mode)  # type: ignore[arg-type]
     except httpx.HTTPError as e:
         raise HTTPException(502, f"路線服務暫時無法使用：{e.__class__.__name__}") from e
-    return {**res, "mode": mode, "points": [list(p) for p in res["points"]]}
+    return {**result, "mode": mode, "points": [list(point) for point in result["points"]]}

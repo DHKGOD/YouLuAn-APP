@@ -45,16 +45,21 @@ def build_advice(top_causes: list[str], top_collisions: list[str], rain_ratio: f
                  elderly_ratio: float) -> dict[str, list[str]]:
     road_user: list[str] = []
     authority: list[str] = []
-    text = " ".join(top_causes)
-    for keys, user_tip, gov_tip in RULES:
-        if any(k in text for k in keys):
+    cause_text = " ".join(top_causes)
+    for keywords, user_tip, gov_tip in RULES:
+        matched = False
+        for keyword in keywords:
+            if keyword in cause_text:
+                matched = True
+                break
+        if matched:
             if user_tip not in road_user:
                 road_user.append(user_tip)
             if gov_tip not in authority:
                 authority.append(gov_tip)
-    for c in top_collisions:
-        if c in COLLISION_TIPS:
-            road_user.append(COLLISION_TIPS[c])
+    for collision in top_collisions:
+        if collision in COLLISION_TIPS:
+            road_user.append(COLLISION_TIPS[collision])
     if rain_ratio >= 0.2:
         road_user.append(f"雨天事故占 {rain_ratio:.0%}，下雨時請提早減速、加大跟車距離。")
         authority.append("檢查路面排水與標線抗滑係數。")
