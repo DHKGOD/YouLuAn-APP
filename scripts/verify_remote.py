@@ -30,12 +30,16 @@ def main():
         preflight = client.options(base + "/api/routes", headers={"Origin": "http://localhost",
             "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
         assert preflight.status_code == 204, "android-cors"
-        iphone = client.options(base + "/api/routes", headers={"Origin": "capacitor://localhost",
+        website = client.options(base + "/api/routes", headers={"Origin": origin,
             "Access-Control-Request-Method": "POST"})
-        assert iphone.status_code == 204, "iphone-cors"
+        assert website.status_code == 204, "website-cors"
+        page = client.get(base + '/')
+        assert page.status_code == 200 and 'name="youluan-api-path"' in page.text, 'website'
+        assert client.get(origin + '/updates/stable.json').status_code == 410, 'native-updates-gone'
     report = {"httpsVerified": True, "databaseHealthy": True, "nearbyCount": near.json()["count"],
               "modelsAvailable": True, "unauthorizedDenied": True, "adminDenied": True, "androidPreflight": True,
-              "iphonePreflight": True, "reportingRemoved": True}
+              "websitePreflight": True, "iphoneWebsiteAvailable": True,
+              "nativeUpdatesGone": True, "reportingRemoved": True}
     (ROOT / "logs/remote-verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report))
 

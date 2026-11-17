@@ -1,6 +1,6 @@
 import { version } from '../../package.json'
 // 設定：伺服器位址（換雲端不必重新打包）、外觀、後台、關於
-import { api, getServer, isNative, normalize, setServer } from '../api.js'
+import { api, getServer, isIOSWebsite, isNative, normalize, setServer, websiteApiPath } from '../api.js'
 import { icon } from '../icons.js'
 import { DEMO, emit, setRoute, state } from '../store.js'
 import {
@@ -82,7 +82,7 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
         </div>
         <button class="cell tappable" data-test style="justify-content:center;color:var(--blue);font-weight:600">測試連線並儲存</button>
       </div>
-      <div class="section-footer">連線位址請向管理者索取。使用外出連線的完整 HTTPS 位址時，可用行動網路或其他 Wi-Fi；若使用區網位址，則需要同一個網路。更換位址後按「測試連線並儲存」，不用重裝 App。</div>
+      <div class="section-footer">使用管理者提供的HTTPS位址可透過行動網路連線。iPhone直接使用網站，不提供iOS安裝包。</div>
     </div>
 
     <div class="section">
@@ -246,7 +246,7 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
       const h = await testServer(url)
       status.innerHTML = `<span class="live-dot"></span><span style="color:var(--green)">已連線</span><span class="c-2">・資料庫 ${
         h.database.ok ? '正常' : '異常'
-      }・${h.database.latency_ms} ms</span>`
+      }${Number.isFinite(h.database.latency_ms) ? `・${h.database.latency_ms} ms` : ''}</span>`
       if (save) {
         const clean = setServer(url)
         $('.srv', p.el).value = clean
@@ -275,8 +275,28 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
       /* 離線 */
     }
   }
+  if (isIOSWebsite()) {
+    $('[data-gmode]', p.el)?.closest('.section')?.remove()
+    $('[data-pref="style"]', p.el)?.remove()
+    $('[data-sw="vibrate"]', p.el)?.closest('label')?.remove()
+    $('[data-gtest]', p.el)?.remove()
+    p.el.querySelectorAll('[data-dev]:not([data-dev="walk"])').forEach(button => button.remove())
+    $('[data-admin]', p.el)?.remove()
+    const walk = $('[data-dev="walk"]', p.el)
+    $('.cell-title', walk).textContent = '模擬行走（網頁前景）'
+    $('.cell-sub', walk).textContent = '請保持Safari頁面開啟，切換程式或鎖屏後暫停'
+    const note = document.createElement('div')
+    note.className = 'section-footer'
+    note.textContent = 'iPhone只提供網站操作。請保持Safari頁面開啟；不提供鎖屏背景守護或App安裝。'
+    walk.closest('.section').append(note)
+  }
+  if (websiteApiPath()) {
+    $('.srv', p.el).readOnly = true
+    $('[data-test]', p.el).textContent = '測試目前網站連線'
+  }
   const renderMode = () => {
-    $('.g-mode', p.el).textContent = GUARDIAN_MODES.find((m) => m.value === guardianMode()).label
+    const label = $('.g-mode', p.el)
+    if (label) label.textContent = GUARDIAN_MODES.find((m) => m.value === guardianMode()).label
   }
   async function pickMode() {
     const v = await actionSheet({
@@ -312,16 +332,18 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
   function renderPrefs() {
     const pr = alertPrefs()
     for (const k of Object.keys(PREF_OPTS)) {
-      $(`.pv-${k}`, p.el).textContent =
-        PREF_OPTS[k].find((o) => o.value === pr[k])?.label.replace('（推薦）', '') || ''
+      const label = $(`.pv-${k}`, p.el)
+      if (label) label.textContent = PREF_OPTS[k].find((o) => o.value === pr[k])?.label.replace('（推薦）', '') || ''
     }
     for (const sw of p.el.querySelectorAll('[data-sw]')) sw.checked = !!pr[sw.dataset.sw]
     const style = ALERT_STYLES.find((o) => o.value === pr.style)
-    const quiet = !pr.voice && !pr.sound && !pr.vibrate ? '目前為完全靜音：只有畫面提醒。' : ''
+    const quiet = !pr.voice && !pr.sound && (isIOSWebsite() || !pr.vibrate) ? '目前為完全靜音：只有畫面提醒。' : ''
     $(
       '.pv-hint',
       p.el
-    ).textContent = `${style.hint}。${quiet}設定會套用到模擬行走、背景守護與導航護航。`
+    ).textContent = isIOSWebsite()
+      ? `${quiet}設定只套用到網頁前景的模擬行走。`
+      : `${style.hint}。${quiet}設定會套用到模擬行走、背景守護與導航護航。`
   }
   async function pickPref(k) {
     const pr = alertPrefs()
@@ -349,6 +371,10 @@ export function settingsView({ openAdmin, openFamily, devWalk }) {
 
   /* 開發者選項 */
   async function renderPerms() {
+    if (isIOSWebsite()) {
+      $('.dev-perm', p.el).textContent = '定位由Safari網站權限管理；提醒只在網頁前景使用'
+      return
+    }
     if (!isNative()) {
       $('.dev-perm', p.el).textContent = '網頁版：背景守護、通知、懸浮視窗需安裝 Android App'
       return

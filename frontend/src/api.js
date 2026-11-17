@@ -4,17 +4,30 @@ import { Capacitor } from '@capacitor/core'
 const KEY = 'serverUrl'
 
 export const isNative = () => Capacitor.isNativePlatform()
+export const isIOSWebsite = () => !isNative() && (
+  /iPhone|iPad|iPod/.test(globalThis.navigator?.userAgent || '') ||
+  (globalThis.navigator?.platform === 'MacIntel' && globalThis.navigator?.maxTouchPoints > 1)
+)
+
+export function websiteApiPath() {
+  if (isNative()) return ''
+  const path = globalThis.document?.querySelector('meta[name="youluan-api-path"]')?.content || ''
+  return /^\/[A-Za-z0-9_-]{40,128}$/.test(path) ? path : ''
+}
 
 /** 網頁版若由後端提供（http://IP:8000/），預設連同一個來源；App 版需要在設定頁輸入。 */
 export function defaultServer() {
   // 公開安裝檔不內建任何管理者位址，即使建置環境有設定也不採用。
   if (isNative()) return ''
+  const path = websiteApiPath()
+  if (path) return location.origin + path
   if (!isNative() && location.protocol.startsWith('http') && location.port !== '5173')
     return location.origin
   return ''
 }
 
 export function getServer() {
+  if (websiteApiPath()) return defaultServer()
   try {
     return localStorage.getItem(KEY) || defaultServer()
   } catch {

@@ -152,6 +152,9 @@ def banner(port: str, foreground: bool) -> None:
         print(f"  手機／平板（同一個 Wi-Fi）請在 App 設定頁輸入：http://{ip}:{port}")
     if public:
         print(f"  對外網址：{public}")
+    else:
+        print("  手機外出使用：另執行「啟動外出連線.bat」，取得通過驗證的完整HTTPS位址。")
+        print("  上面的區網IP只適用同Wi-Fi；重開外出通道後，手機須改用新位址。")
     print(f"  API 文件：http://127.0.0.1:{port}/docs")
     print("=" * 60, flush=True)
 

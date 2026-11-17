@@ -1,5 +1,6 @@
 // 地圖共用：MapLibre 向量底圖（OpenFreeMap，免金鑰）＋ Leaflet 標記；依深淺色切換樣式
 import L from 'leaflet'
+import { isIOSWebsite } from './api.js'
 import 'leaflet/dist/leaflet.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import * as maplibregl from 'maplibre-gl'
@@ -45,6 +46,14 @@ function localizeLabels(gl) {
 export function createMap(container, opts = {}) {
   const map = L.map(container, { zoomControl: false, attributionControl: true, ...opts })
   map.attributionControl?.setPrefix(false)
+  if (isIOSWebsite()) {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      referrerPolicy: 'origin', // 底圖只收到網站網域，不帶私人路徑。
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(map)
+    return map
+  }
   const gl = L.maplibreGL({
     style: isDark() ? STYLE.dark : STYLE.light,
     attribution: ATTR,

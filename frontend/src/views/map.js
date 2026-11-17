@@ -1,6 +1,6 @@
 // 地圖首頁（Apple 地圖版面）：全螢幕地圖、右上角控制鈕、底部抽屜（搜尋列＋天候時段膠囊＋危險路口清單）
 import { Geolocation } from '@capacitor/geolocation'
-import { api } from '../api.js'
+import { api, isIOSWebsite } from '../api.js'
 import { icon } from '../icons.js'
 import { L, createMap, drawRoute, hotspotIcon, meIcon, pinIcon, routeBubble } from '../map-utils.js'
 import {
@@ -133,6 +133,10 @@ export function mapView({ openReport, startWalk }) {
       </div></div>
     </section>`)
 
+  if (isIOSWebsite()) {
+    page.querySelectorAll('[data-act="guardian"]').forEach(button => button.remove())
+    $('.ap-quick', page).style.gridTemplateColumns = 'repeat(2, 1fr)'
+  }
   const mapEl = $('#map', page)
   const sheet = $('.sheet', page)
   let map, routeLayer, pinsLayer, hsLayer, meMarker
@@ -651,6 +655,7 @@ export function mapView({ openReport, startWalk }) {
 
   function renderGuardian(g) {
     const pill = $('.guardian-pill', page)
+    if (!pill) return
     pill.hidden = !g.running
     $('[data-act="guardian"].fab', page)?.classList.toggle('on', !!g.running)
     $('.q-guard', page).textContent = g.running ? (g.simulating ? '模擬中' : '守護中') : '未開啟'

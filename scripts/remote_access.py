@@ -65,6 +65,42 @@ def save(state):
     temp.replace(STATE)
 
 
+def read_state():
+    try:
+        state = json.loads(STATE.read_text(encoding="utf-8"))
+        return state if isinstance(state, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def gateway_healthy():
+    key = values().get("REMOTE_ACCESS_KEY", "")
+    return bool(key) and healthy(f"http://127.0.0.1:{GATEWAY_PORT}/{key}/api/health")
+
+
+def wait_ready(timeout=60):
+    """只等待本機入口及通道程序就緒；之後仍需verify_remote驗證外網。"""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        state = read_state()
+        if state.get("status") == "tunnel_connected" and state.get("url") and gateway_healthy():
+            return True
+        time.sleep(1)
+    return False
+
+
+def show_status():
+    state = read_state()
+    if not gateway_healthy():
+        print("外出入口目前沒有正常回應；舊狀態紀錄不代表仍在連線。")
+        print("請執行「啟動外出連線.bat」，一般start_server.bat只啟動區網伺服器。")
+        return
+    print("本機外出入口與資料庫正常；外網是否可用請執行scripts/verify_remote.py確認。")
+    print("上次通道紀錄：" + str(state.get("status", "unknown")))
+    if state.get("url"):
+        print("私人連線位址存放在run/手機外出連線.txt；不要上傳GitHub")
+
+
 def run():
     if not BINARY.is_file() or hashlib.sha256(BINARY.read_bytes()).hexdigest() != BINARY_SHA256:
         raise SystemExit("找不到已驗證的cloudflared；請依docs/remote-access.md準備工具")
@@ -145,6 +181,7 @@ def run():
                         save(state)
                         (RUN / "手機外出連線.txt").write_text(
                             "App設定的伺服器位址（含私人通行碼，不要公開）：\n" + state["url"] +
+                            "\n\niPhone Safari網站（直接開啟，不下載App）：\n" + state["url"] + "/" +
                             "\n\n電腦與外出通道要保持運作；重啟通道後網址會改變。\n", encoding="utf-8")
                         announced = True
                         print("外出網址已產生；連通測試尚未完成。", flush=True)
@@ -186,15 +223,13 @@ def main():
             STOP.write_text(json.dumps({"instance": state["instance"]}), encoding="utf-8")
             print("已要求停止本專案的外出通道；API與資料庫保留")
     elif command == "status":
-        if not STATE.exists():
-            print("尚未啟動外出連線")
-            return
-        state = json.loads(STATE.read_text(encoding="utf-8"))
-        print("狀態：" + state["status"])
-        if state.get("url"):
-            print("私人連線位址存放在run/手機外出連線.txt；不要上傳GitHub")
+        show_status()
+    elif command == "wait":
+        if not wait_ready():
+            print("外出入口一分鐘內尚未就緒，請查看logs/remote-supervisor.log與remote-tunnel.log。")
+            raise SystemExit(1)
     else:
-        raise SystemExit("使用方式：remote_access.py start／status／stop")
+        raise SystemExit("使用方式：remote_access.py start／status／stop／wait")
 
 
 if __name__ == "__main__":

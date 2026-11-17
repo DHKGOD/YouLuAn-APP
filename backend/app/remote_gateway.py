@@ -11,9 +11,9 @@ from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 import httpx
-from .signed_updates import update_asset
+from .web_files import website_asset
 
 MAX_BODY = 256 * 1024
 MAX_RESPONSE = 4 * 1024 * 1024
@@ -27,7 +27,7 @@ POST_PATHS = {"api/routes", "api/hotspots/route"}
 
 
 def create_gateway(secret: str, upstream: str = "http://127.0.0.1:8000", *,
-                   transport=None, rate_limit: int = 120, updates_root: Path | None = None) -> FastAPI:
+                   transport=None, rate_limit: int = 120, web_root: Path | None = None) -> FastAPI:
     if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", secret):
         raise ValueError("外出連線通行碼尚未設定")
     target = urlsplit(upstream)
@@ -47,19 +47,33 @@ def create_gateway(secret: str, upstream: str = "http://127.0.0.1:8000", *,
     recent = defaultdict(deque)
 
     @gateway.get("/updates/{asset_path:path}")
-    async def signed_update(asset_path: str):
-        if updates_root is None:
+    async def retired_native_update(asset_path: str):
+        if asset_path == 'stable.json':
+            return JSONResponse({'detail': 'iPhone版已改由網站操作，請向管理者取得網站位址。'},
+                                status_code=410, headers={'Cache-Control': 'no-store'})
+        return Response(status_code=404)
+
+    @gateway.get('/{access_code}')
+    async def website_entry(access_code: str):
+        if web_root is None or not hmac.compare_digest(access_code.encode(), secret.encode()):
             return Response(status_code=404)
-        try:
-            data = update_asset(updates_root, asset_path)
-            return Response(data, media_type="application/octet-stream", headers={"Cache-Control": "no-store"})
-        except (OSError, ValueError, KeyError, StopIteration, TypeError):
-            return Response(status_code=404)
+        return RedirectResponse('/' + access_code + '/', status_code=307,
+                                headers={'Referrer-Policy': 'no-referrer'})
 
     @gateway.api_route("/{access_code}/{path:path}", methods=["GET", "POST", "OPTIONS"])
     async def forward(access_code: str, path: str, request: Request):
         if not hmac.compare_digest(access_code.encode(), secret.encode()):
             return Response(status_code=404)
+        if not path.startswith('api/'):
+            if web_root is None or request.method != 'GET':
+                return Response(status_code=404)
+            try:
+                data, content_type = website_asset(web_root, path, secret)
+                return Response(data, media_type=content_type, headers={
+                    'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
+                    'X-Content-Type-Options': 'nosniff'})
+            except (OSError, ValueError):
+                return Response(status_code=404)
         allowed = bool(GET_PATHS.fullmatch(path)) or path in POST_PATHS
         if not allowed:
             return Response(status_code=404)
@@ -68,7 +82,7 @@ def create_gateway(secret: str, upstream: str = "http://127.0.0.1:8000", *,
         origin = request.headers.get("origin", "")
         headers = {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"}
         if origin:
-            if origin not in ORIGINS:
+            if origin not in ORIGINS and origin != str(request.base_url).rstrip('/'):
                 return Response(status_code=403)
             headers.update({"Access-Control-Allow-Origin": origin, "Vary": "Origin"})
         if request.method == "OPTIONS":
@@ -139,7 +153,6 @@ def create_gateway(secret: str, upstream: str = "http://127.0.0.1:8000", *,
 def gateway_app():
     root = Path(__file__).resolve().parents[2]
     values = dotenv_values(root / ".env")
-    updates_root = values.get("IOS_UPDATES_DIR", "")
     return create_gateway(values.get("REMOTE_ACCESS_KEY", ""),
                           "http://127.0.0.1:8092",
-                          updates_root=Path(updates_root) if updates_root else None)
+                          web_root=root / 'frontend/dist')

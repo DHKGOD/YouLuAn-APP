@@ -1,5 +1,13 @@
 # 公開副本交接
 
+## 2026-11-17：iPhone只使用網站
+
+- Android保留APK；iPhone不提供原生App、IPA下載或SideStore安裝。管理者啟動外出連線後，iPhone直接在Safari開啟完整私人網站位址；不需要另填API或安裝憑證。
+- 入口只提供通行碼路徑內的網站與指定API，同來源路徑自動設定。網站移除iPhone原生背景／懸浮／通知專用操作，模擬切到背景即暫停。地圖、排行、歷史事故報告、AI及家人路線保留。
+- 原生簽署更新供應移除；stable回410，IPA與更新檔不供應。Android原生預設位址仍空白，原APK Release未改動。
+- 原專案與公開副本後端83項、公開網站／Android JS5項、WebKit網站2項、舊原生下載退役2項通過；已實際驗證公網網站、腳本與同源API，使用者確認iPhone網站正常。
+- 這次沒有新Android APK，沒有將私人網址、金鑰、iOS原生來源或安裝包放進公開專案。操作見README及docs/remote-access.md。
+
 ## 2026-11-10 舊APK報告相容修正
 
 - 舊版Android報告頁直接讀user_reports.length；取消回報後少了欄位，導致歷史事故報告也顯示「讀取失敗」。

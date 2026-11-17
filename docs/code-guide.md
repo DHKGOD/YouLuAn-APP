@@ -65,3 +65,7 @@
 後端跑 `uv run pytest`；前端跑 `npm run build` 和 `scripts/e2e.ps1`；Java 提醒邏輯跑 `scripts/test_guardian.ps1`。完整指令在 README。瀏覽器測試不能代替手機鎖屏後的 GPS、語音與浮動視窗測試。
 
 `HANDOFF.md` 和 `TASKS.md` 是協作紀錄，保留當時做過的事及未完成項目。套件、打包產物、原始資料、模型檔及 Git 紀錄不需要改成另一種寫作風格。
+
+## iPhone網站
+
+共用前端以isIOSWebsite辨識Safari／iPad，移除原生專用操作。remote_gateway只提供通行碼路徑內的網站與API；web_files限制可下載檔案。HTML附網站API路徑，api.js會優先使用，避免沿用過期的伺服器設定。模擬遇visibilitychange即暫停，沒有背景服務。

@@ -5,7 +5,7 @@ import './styles/components.css'
 import './styles/views.css'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
-import { getServer, isNative, setServer } from './api.js'
+import { getServer, isIOSWebsite, isNative, setServer } from './api.js'
 import { icon } from './icons.js'
 import { emit } from './store.js'
 import { $, $$, Stack, el, esc, modalStack, toast } from './ui.js'
@@ -24,6 +24,7 @@ import { applyElderMode } from './family.js'
 import { familyView } from './views/family.js'
 
 applyTheme(savedTheme())
+document.documentElement.classList.toggle('ios-website', isIOSWebsite())
 applyElderMode()
 // Android WebView 的毛玻璃不一定有效，App 內改用實色材質（見 views.css html.no-blur）
 if (isNative() || !CSS.supports('backdrop-filter', 'blur(2px)'))
@@ -164,7 +165,7 @@ function onboarding() {
     getServer()
   )}"></div>
         </div>
-        <div class="t-footnote c-2 ob-msg" style="text-align:left;padding:8px 4px 0">請向提供此 App 的管理者取得連線位址，貼上完整內容後即可使用。App 不會預設連到任何私人伺服器。</div>
+        <div class="t-footnote c-2 ob-msg" style="text-align:left;padding:8px 4px 0">請向提供此 App 的管理者取得完整位址，再貼上測試</div>
         <button class="btn btn-primary btn-block ob-go" style="margin-top:20px">開始使用</button>
         <button class="btn btn-block ob-skip" style="margin-top:6px;color:var(--blue);font-weight:500">稍後再設定</button>
         <div class="t-caption c-2" style="margin-top:22px">依官方歷史事故統計提醒注意，不保證路況安全</div>

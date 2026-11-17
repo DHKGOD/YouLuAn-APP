@@ -258,6 +258,14 @@ export function startWalk({
   let handoff = null // { base: 交出時已走的距離 }
   let handing = null // 交接中的 Promise（避免切換太快時順序錯亂）
   const listeners = []
+  const pauseWebsite = () => {
+    if (isNative() || !document.hidden || !playing) return
+    playing = false
+    $('[data-w="toggle"]', panel).innerHTML = icon('play')
+    $('.walk-next', panel).textContent = '模擬已暫停，回來後按播放繼續'
+    try { speechSynthesis.cancel() } catch {}
+  }
+  document.addEventListener('visibilitychange', pauseWebsite)
   async function onBackground() {
     if (!playing || dist >= total || handoff || guardianState.running) return // 已有實際守護在跑就不搶
     const base = dist
@@ -313,6 +321,7 @@ export function startWalk({
   }
 
   function stop() {
+    document.removeEventListener('visibilitychange', pauseWebsite)
     listeners.forEach((l) => l.remove())
     if (handoff) {
       handoff = null
