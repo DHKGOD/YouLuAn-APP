@@ -153,6 +153,9 @@ def create_gateway(secret: str, upstream: str = "http://127.0.0.1:8000", *,
 def gateway_app():
     root = Path(__file__).resolve().parents[2]
     values = dotenv_values(root / ".env")
+    api_port = int(values.get("REMOTE_API_PORT") or "8092")
+    web_root = Path(values.get("FRONTEND_DIR") or "web/dist")
+    if not web_root.is_absolute():
+        web_root = root / web_root
     return create_gateway(values.get("REMOTE_ACCESS_KEY", ""),
-                          "http://127.0.0.1:8092",
-                          web_root=root / 'frontend/dist')
+                          f"http://127.0.0.1:{api_port}", web_root=web_root)

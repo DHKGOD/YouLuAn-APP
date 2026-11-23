@@ -23,8 +23,9 @@ STATE = RUN / "remote-access.json"
 STOP = RUN / "remote-stop.json"
 BINARY = ROOT / "tools/cloudflared.exe"
 BINARY_SHA256 = "db4e4c413612a0916f3e1679d3caaf376f94911952d163028fb726fb2e0516a9"
-GATEWAY_PORT = 8091
-REMOTE_API_PORT = 8092
+_ports = dotenv_values(ROOT / ".env")
+GATEWAY_PORT = int(_ports.get("REMOTE_GATEWAY_PORT") or "8091")
+REMOTE_API_PORT = int(_ports.get("REMOTE_API_PORT") or "8092")
 
 
 def values():
@@ -181,7 +182,7 @@ def run():
                         save(state)
                         (RUN / "手機外出連線.txt").write_text(
                             "App設定的伺服器位址（含私人通行碼，不要公開）：\n" + state["url"] +
-                            "\n\niPhone Safari網站（直接開啟，不下載App）：\n" + state["url"] + "/" +
+                            "\n\n網頁版（手機、平板或電腦均可使用瀏覽器開啟）\n" + state["url"] + "/" +
                             "\n\n電腦與外出通道要保持運作；重啟通道後網址會改變。\n", encoding="utf-8")
                         announced = True
                         print("外出網址已產生；連通測試尚未完成。", flush=True)

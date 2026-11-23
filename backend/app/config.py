@@ -23,7 +23,7 @@ class Settings:
         o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()])
     public_api_base: str = field(default_factory=lambda: os.environ.get("PUBLIC_API_BASE", ""))
     model_dir: Path = field(default_factory=lambda: _path(os.environ.get("MODEL_DIR", "ai/models")))
-    frontend_dir: Path = field(default_factory=lambda: _path(os.environ.get("FRONTEND_DIR", "frontend/dist")))
+    frontend_dir: Path = field(default_factory=lambda: _path(os.environ.get("FRONTEND_DIR", "web/dist")))
     # 中央氣象署開放資料授權碼（沒有時雨天自動模式隱藏）
     cwa_api_key: str = field(default_factory=lambda: os.environ.get("CWA_API_KEY", "").strip())
     # 測試用：強制不用 PostGIS，驗證替代查詢

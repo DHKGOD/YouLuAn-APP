@@ -1,6 +1,6 @@
 # 有路安：組員協作規則
 
-這是 Android 資料庫課程專題的公開學習副本。先讀 README.md、docs/code-guide.md、docs/team-agent-guide.md、HANDOFF.md、TASKS.md，再看實際檔案及 git status。
+這是有路安資料庫課程專題的公開學習副本。Android 在 `frontend/`，通用網頁版在 `web/`。先讀 README.md、docs/code-guide.md、docs/team-agent-guide.md、HANDOFF.md、TASKS.md，再看實際檔案及 git status。
 
 ## 協作
 

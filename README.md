@@ -1,15 +1,14 @@
 # 專題-有路安APP
 
-## iPhone使用方式（2026-11-17）
+## 下載與使用
 
-**iOS只提供Safari網站，不提供App下載或安裝。** 管理者執行「啟動外出連線.bat」，把驗證成功的完整網站位址交給使用者；iPhone直接在Safari開啟，不用安裝憑證、VPN或SideStore。網站位址含私人通行碼，不要公開到GitHub。
-
-網站保留地圖、排行、歷史事故報告、AI、家人路線及前景模擬。切換程式或鎖屏時模擬暫停，iPhone網站不提供背景守護或懸浮提醒。Android繼續使用原APK。詳見[外出連線說明](docs/remote-access.md)。
-
+- **Android**｜下載 [有路安 0.2.2 APK](https://github.com/DHKGOD/YouLuAn-APP/releases/download/android-v0.2.2/YouLuAn-0.2.2.apk)。安裝後向管理者索取完整伺服器位址，在 App 按「測試並儲存」。
+- **網頁版**｜手機、平板或電腦都能開啟。用瀏覽器開啟管理者提供的完整網站位址，即可看地圖、排行、路口體檢、AI 與家人路線。允許定位後可在網頁開著時收到危險路口提醒。切到背景或鎖屏會暫停網頁定位與模擬，Android App 可另外啟用背景守護。
+- **自行部署**｜完成首次資料庫與網站建置後，Windows 主機可用「啟動兩個版本.cmd」啟動共用外出服務。操作見[外出連線說明](docs/remote-access.md)。
 
 目前 App 保留地圖、排行、設定三個分頁。回報與動態牆已取消；「路口體檢報告」仍可查看官方歷史事故分析。首次安裝不預設任何私人伺服器位址，請向管理者取得完整連線位址，再到設定測試並儲存。
 
-**有路安**是資料庫課程的 Android 專題。我們把警政署的歷史事故資料整理成危險路口，讓使用者在出門前查看路線，行經路口時收到提醒。
+**有路安**是資料庫課程的雙平台專題。我們把警政署的歷史事故資料整理成危險路口，讓使用者在出門前查看路線，行經路口時收到提醒。
 
 > 依官方歷史事故統計提醒注意，不保證路況安全。歷史事故多不代表現在一定危險，事故少也不代表安全。
 
@@ -28,7 +27,7 @@
 | 天候與時段篩選 | 比較雨天、夜間與一般情況 | SQL 篩選歷史事故發生時的天候與時間 |
 | 路口體檢報告 | 了解常見肇因、時段、車種與改善建議 | 資料庫分組統計，搭配規則式建議，可匯出 HTML 報告 |
 | AI 肇因情境預測 | 選擇天候、時段等條件，查看可能的肇因 | scikit-learn 分類模型；每次預測記錄模型版本 |
-| 模擬行走 | 沒有 GPS 或在教室也能展示提醒 | 藍點沿路線前進，進入路口提醒範圍時顯示提示與語音 |
+| 模擬行走 | 沒有 GPS 或在教室也能展示提醒 | 沿路線模擬移動並展示提醒。網頁版提供步行、腳踏車、機車、開車、高鐵／快線捷運五種速度與圖示，並保留倍率 |
 | Android 背景守護 | 切到導航或鎖屏後繼續提醒 | Android 前景服務取得位置，判斷距離，發出通知、語音及浮動提醒 |
 | 家人模式 | 替家人規劃常走路線 | 路線存進資料庫，另一台手機輸入六碼代碼下載 |
 | 後台統計 | 展示專題確實使用資料庫 | 即時 SQL 筆數、資料表關係及各月事故數 |
@@ -46,7 +45,7 @@ flowchart LR
     Phone --> Guard["Android 原生定位與提醒"]
 ```
 
-- **前端**：JavaScript、Vite、Leaflet、MapLibre，負責畫面、地圖與操作。
+- **前端**：Android 的前端在 `frontend/`，通用網頁版在 `web/`。兩者共用後端與資料庫。
 - **Android**：Capacitor 把前端包成 APK；Java 服務處理背景定位與提醒。
 - **後端**：Python FastAPI，接收請求、查資料庫、使用模型並回傳結果。
 - **資料庫**：PostgreSQL，支援 PostGIS 空間查詢，也有一般 SQL 的替代查詢。
@@ -56,7 +55,7 @@ flowchart LR
 
 ## 3. 資料來源與 AI
 
-事故資料來自[警政署即時交通事故資料 A2 類](https://data.gov.tw/dataset/13139)。目前既有報告使用民國115年1–10月，記錄事故 **284,116件**、當事人 **640,620列**、危險路口 **18,573處**。這是既有匯入結果；重新下載時若官方資料更新，筆數可能不同，請以自己的 SQL 查詢為準。
+事故資料來自[警政署即時交通事故資料 A2 類](https://data.gov.tw/dataset/13139)。ProMax 的課程展示資料選用民國 115 年 4 月 16 日至 11 月 2 日的事故，共 **205,214 件事故**、**462,202 列當事人**、**12,599 處路口**。組員自行重新下載與匯入時，請以自己的 SQL 查詢為準。若要自行選擇起始日，使用 `uv run python scripts/import_accidents.py --since YYYY-MM-DD`，再執行 `scripts/clean_coords.py` 和 `scripts/build_hotspots.py`。匯入會重建事故資料，請使用自己的專題資料庫。
 
 一件事故可能有多位當事人，因此當事人列數不等於事故件數。匯入後分成 accident、party 等資料表，再做座標品質檢查及路口彙整。
 
@@ -127,14 +126,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_postgres.ps1
 需要的人自行取得氣象署授權碼，在**自己的 .env** 加上：
 
 ```dotenv
-CWA_API_KEY=請填自己的授權碼
+CWA_API_KEY="your token"
 ```
 
-這是示意文字，不是可用金鑰。不需要把授權碼貼給組員或上傳 GitHub。歷史雨量校正另可執行 uv run python ai/rain_risk.py；它需要自己的授權碼或已下載的雨量快取。
+將 `your token` 換成自己的授權碼。不需要把授權碼貼給組員或上傳 GitHub。歷史雨量校正另可執行 uv run python ai/rain_risk.py；它需要自己的授權碼或已下載的雨量快取。
 
 ## 6. 放到 Android 手機
 
-要直接安裝：到 [GitHub Releases](https://github.com/DHKGOD/YouLuAn-APP/releases) 下載最新 APK（Android 7 以上），安裝後向管理者取得完整位址，貼入 App 首次設定或「設定 → 伺服器位址」，再按「測試並儲存」。公開 APK 沒有預設位址、通行碼或 API key。
+要直接安裝：下載 [有路安 0.2.2 APK](https://github.com/DHKGOD/YouLuAn-APP/releases/download/android-v0.2.2/YouLuAn-0.2.2.apk)（Android 7 以上），安裝後向管理者取得完整位址，貼入 App 首次設定或「設定 → 伺服器位址」，再按「測試並儲存」。公開 APK 沒有預設位址、通行碼或 API key。
 
 使用管理者提供的 HTTPS 外出位址時，不必連相同 Wi-Fi；管理者電腦、後端及連線通道仍須保持運行。通道網址若更換，請重新向管理者取得，不要在公開 issue 張貼私人連線位址。
 
@@ -182,8 +181,9 @@ AGENTS.md 和 HANDOFF.md，再看目前檔案與 git status。
 |---|---|
 | 後端測試 | uv run pytest |
 | 前端開發 | 在 frontend 執行 npm ci，再執行 npm run dev |
-| 前端正式建置 | 在 frontend 執行 npm run build |
-| 完整操作測試 | powershell -ExecutionPolicy Bypass -File scripts\e2e.ps1 |
+| Android 前端建置 | 在 `frontend/` 執行 `npm ci`、`npm run build` |
+| 網頁版正式建置 | 在 `web/` 執行 `npm ci`、`npm run build`，輸出至 `web/dist/` |
+| 網頁操作測試 | 見 [網頁版測試說明](web/README.md) |
 | Java 提醒邏輯測試 | powershell -ExecutionPolicy Bypass -File scripts\test_guardian.ps1 |
 | 重新訓練肇因模型 | uv run python ai/train_cause_model.py |
 

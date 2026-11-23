@@ -1,6 +1,7 @@
 """把 data/raw/ 的交通事故原始檔匯入資料庫（會先清空事故相關資料表再重建）。
 
     uv run python scripts/import_accidents.py
+    uv run python scripts/import_accidents.py --since 2026-04-16
 
 - 原始 CSV 一列是一位當事人；同一件事故的當事人連續排列，「當事者順位=1」代表新事故開始。
 - 事故層級欄位取順位 1 那列；每一列都寫進 party。
@@ -8,6 +9,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import io
@@ -17,7 +19,7 @@ import sys
 import time
 import zipfile
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import psycopg
@@ -111,6 +113,17 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def rows_since(rows: list[list[str]], since: date | None) -> list[list[str]]:
+    if since is None:
+        return rows
+    first_day = since.strftime("%Y%m%d")
+    selected = []
+    for row in rows:
+        if row[I["發生日期"]] >= first_day:
+            selected.append(row)
+    return selected
+
+
 @dataclass
 class CodeBook:
     """肇因／事故型態代碼：先收集所有 (大類, 子類)，再一次寫入並取回 id。"""
@@ -131,12 +144,17 @@ class CodeBook:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--since", type=date.fromisoformat, help="只匯入此日期起的事故（YYYY-MM-DD），仍保留每件事故的所有當事人")
+    args = parser.parse_args()
     files = sorted((RAW / "a2_115").glob("*.zip"), key=lambda p: int(re.search(r"_(\d+)\.zip$", p.name).group(1)))
     if not files:
         raise SystemExit("data/raw/a2_115/ 沒有資料，請先執行 scripts/download_data.py")
     t0 = time.time()
     print(f"讀取 {len(files)} 個原始檔…")
-    data = [(f, read_csv_rows(f)) for f in files]
+    data = [(f, rows_since(read_csv_rows(f), args.since)) for f in files]
+    if not any(rows for _, rows in data):
+        raise SystemExit("日期篩選後沒有資料，未清空資料庫。")
 
     cause_pairs: set[tuple[str, str]] = set()
     coll_pairs: set[tuple[str, str]] = set()

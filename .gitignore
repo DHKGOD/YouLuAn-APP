@@ -58,3 +58,9 @@ frontend/playwright-report/
 
 # 本機產生的報告與其他輸出
 /output/
+
+# 網頁建置與本機安裝檔
+web/test-results/
+web/playwright-report/
+*.apk
+*.ipa

@@ -38,7 +38,7 @@ def main():
         assert client.get(origin + '/updates/stable.json').status_code == 410, 'native-updates-gone'
     report = {"httpsVerified": True, "databaseHealthy": True, "nearbyCount": near.json()["count"],
               "modelsAvailable": True, "unauthorizedDenied": True, "adminDenied": True, "androidPreflight": True,
-              "websitePreflight": True, "iphoneWebsiteAvailable": True,
+              "websitePreflight": True, "websiteAvailable": True,
               "nativeUpdatesGone": True, "reportingRemoved": True}
     (ROOT / "logs/remote-verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report))

@@ -110,7 +110,7 @@ export function mapView({ openReport, startWalk }) {
                 'warning'
               )}離線</span></span></span>
               <span class="ap-card-s">事故 <b class="s-acc">–</b> 件</span>
-              <span class="ap-card-note">依 115 年 1–10 月官方事故統計</span>
+              <span class="ap-card-note">依 115 年官方歷史事故統計</span>
             </span>
             <button class="ap-more" data-act="more" aria-label="更多">${icon('ellipsis')}</button>
           </div>

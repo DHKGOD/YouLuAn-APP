@@ -76,6 +76,6 @@
 
 `HANDOFF.md` 和 `TASKS.md` 是協作紀錄，保留當時做過的事及未完成項目。套件、打包產物、原始資料、模型檔及 Git 紀錄不需要改成另一種寫作風格。
 
-## iPhone網站
+## 通用網頁版
 
-共用前端以isIOSWebsite辨識Safari／iPad，移除原生專用操作。remote_gateway只提供通行碼路徑內的網站與API；web_files限制可下載檔案。HTML附網站API路徑，api.js會優先使用，避免沿用過期的伺服器設定。模擬遇visibilitychange即暫停，沒有背景服務。
+網頁原始碼在 `web/src/`。`api.js` 從網站入口讀取同來源 API 路徑，`web-guardian.js` 管理瀏覽器定位與提醒，`walk.js` 處理模擬速度、圖示與倍速。頁面切到背景時會暫停定位和模擬。Android 的原生守護仍由 `frontend/android/` 的 Java 服務負責。

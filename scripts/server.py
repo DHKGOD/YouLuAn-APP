@@ -19,7 +19,7 @@ import httpx
 import psycopg
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import ROOT, database_url, env, lan_ips  # noqa: E402
+from common import ROOT, database_url, env, lan_ips, project_path  # noqa: E402
 
 RUN = ROOT / "run"
 LOGS = ROOT / "logs"
@@ -96,17 +96,23 @@ def ensure_database() -> None:
 
 
 def ensure_frontend() -> None:
-    """後端也提供網頁版前端：frontend/dist 不存在時自動建置（需要 Node.js）。"""
-    if (ROOT / "frontend" / "dist" / "index.html").exists():
+    """網站缺少成品時，從 FRONTEND_DIR 的上一層建置。"""
+    website = project_path(env("FRONTEND_DIR", "web/dist"))
+    if (website / "index.html").exists():
         return
     npm = shutil.which("npm")
     if not npm:
         print("⚠ 找不到 Node.js（npm），無法建置網頁版前端；API 仍可使用，App 不受影響。")
         return
     print("建置網頁版前端…")
-    front = ROOT / "frontend"
+    front = website.parent
+    if not (front / "package.json").is_file():
+        print("⚠ 找不到網站的 package.json，請檢查 FRONTEND_DIR。")
+        return
     if not (front / "node_modules").exists():
-        subprocess.run([npm, "ci"], cwd=front, check=False)
+        if subprocess.run([npm, "ci"], cwd=front).returncode != 0:
+            print("⚠ 網站套件安裝失敗；API 仍可使用。")
+            return
     if subprocess.run([npm, "run", "build"], cwd=front).returncode != 0:
         print("⚠ 前端建置失敗；API 仍可使用。")
 
